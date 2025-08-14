@@ -1,0 +1,22 @@
+[package]
+name = "ephemeral_web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# The latest stable Dioxus v0.6 ecosystem
+# FIX: Explicitly enable the "web" feature for the core dioxus crate.
+dioxus = { version = "0.6.3", features = ["web"] }
+dioxus-web = "0.6.3"
+dioxus-router = "0.6.3"
+
+# For making HTTP requests to our backend
+reqwest = { version = "0.12.4", features = ["json"] }
+# For serializing/deserializing data
+serde = { version = "1.0.203", features = ["derive"] }
+
+# For logging in the browser console
+log = "0.4.21"
+wasm-logger = "0.2.0"
+futures-util = "0.3.31"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
