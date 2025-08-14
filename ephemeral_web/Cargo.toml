@@ -11,7 +11,7 @@ dioxus-web = "0.6.3"
 dioxus-router = "0.6.3"
 
 # For making HTTP requests to our backend
-reqwest = { version = "0.12.4", features = ["json"] }
+reqwest = { version = "0.12.23", features = ["json", "multipart"] }
 # For serializing/deserializing data
 serde = { version = "1.0.203", features = ["derive"] }
 
@@ -20,3 +20,4 @@ log = "0.4.21"
 wasm-logger = "0.2.0"
 futures-util = "0.3.31"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
+web-sys = "0.3.77"

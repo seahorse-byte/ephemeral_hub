@@ -3,8 +3,10 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 use futures_util::stream::StreamExt;
 use gloo_timers::future::sleep;
+use reqwest::multipart;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use web_sys::{File, FormData};
 
 // Define the routes for our application.
 #[derive(Routable, Clone, PartialEq)]
@@ -84,7 +86,6 @@ fn Home() -> Element {
     }
 }
 
-/// Define the properties (props) for the Space component.
 #[derive(PartialEq, Props, Clone)]
 struct SpaceProps {
     id: String,
@@ -109,7 +110,6 @@ struct FileInfo {
 fn Space(props: SpaceProps) -> Element {
     let id = props.id.clone();
 
-    // Fetch space data when component mounts
     let space_resource = use_resource(move || {
         let id = id.clone();
         async move {
@@ -137,6 +137,7 @@ fn Space(props: SpaceProps) -> Element {
                     match inner {
                         Some(data) => rsx! {
                             TextBin { data: data.clone(), space_id: props.id.clone() }
+                            FileDrop { space_id: props.id.clone(), files: data.files.clone(), space_resource: space_resource.clone() }
                         },
                         None => rsx! {
                             p { "Failed to load space data." }
@@ -206,9 +207,107 @@ fn TextBin(props: TextBinProps) -> Element {
     }
 }
 
+/// A sub-component for the File Drop UI.
+/// A sub-component for the File Drop UI.
+#[derive(PartialEq, Props, Clone)]
+struct FileDropProps {
+    space_id: String,
+    files: Vec<FileInfo>,
+    space_resource: Resource<Option<SpaceData>>,
+}
+
+#[allow(non_snake_case)]
+fn FileDrop(props: FileDropProps) -> Element {
+    let is_uploading = use_signal(|| false);
+
+    // The coroutine now expects a Vec containing the filename and its bytes.
+    let upload_coroutine =
+        use_coroutine(move |mut rx: UnboundedReceiver<Vec<(String, Vec<u8>)>>| {
+            let space_id = props.space_id.clone();
+            let mut space_resource = props.space_resource.clone();
+            let mut is_uploading = is_uploading.clone();
+            async move {
+                while let Some(files_with_data) = rx.next().await {
+                    is_uploading.set(true);
+                    let mut form = multipart::Form::new();
+                    for (filename, file_bytes) in files_with_data {
+                        let part = multipart::Part::bytes(file_bytes).file_name(filename);
+                        form = form.part("file", part);
+                    }
+
+                    let client = reqwest::Client::new();
+                    let api_url = format!("http://127.0.0.1:3000/api/spaces/{}/files", space_id);
+
+                    let res = client.post(api_url).multipart(form).send().await;
+
+                    if res.is_ok() {
+                        space_resource.restart();
+                    } else {
+                        log::error!("Failed to upload files: {:?}", res.err());
+                    }
+                    is_uploading.set(false);
+                }
+            }
+        });
+
+    rsx! {
+        div {
+            h2 { "File Drop" }
+            p { "Upload files to share them temporarily." }
+
+            input {
+                r#type: "file",
+                multiple: true,
+                id: "file-upload",
+                class: "hidden",
+                onchange: move |evt| {
+                    // Spawn a task to handle the async file reading.
+                    spawn({
+                        let upload_coroutine = upload_coroutine.clone();
+                        async move {
+                            // Use `.files()` to get the file engine.
+                            if let Some(file_engine) = evt.files() {
+                                // Get the list of file names.
+                                let files = file_engine.files();
+                                let mut files_with_data = Vec::new();
+                                // Iterate over the file names and read each one.
+                                for file_name in &files {
+                                    if let Some(file_bytes) = file_engine.read_file(file_name).await {
+                                        files_with_data.push((file_name.clone(), file_bytes));
+                                    }
+                                }
+                                if !files_with_data.is_empty() {
+                                    upload_coroutine.send(files_with_data);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            // The button that triggers the file input.
+            label {
+                r#for: "file-upload",
+                class: "cursor-pointer bg-blue-500 text-white py-2 px-4 rounded",
+                if is_uploading() {
+                    "Uploading..."
+                } else {
+                    "Upload Files"
+                }
+            }
+
+            // List of existing files.
+            ul {
+                class: "list-disc pl-5 mt-4",
+                for file in props.files.iter() {
+                    li { "{file.filename} ({file.size} bytes)" }
+                }
+            }
+        }
+    }
+}
+
 fn main() {
-    // Initialize the logger for wasm environments.
     wasm_logger::init(wasm_logger::Config::default());
-    // The `launch` function is brought into scope by the prelude.
     launch(App);
 }

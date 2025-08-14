@@ -46,5 +46,5 @@ cargo run --package ephemeral_backend
 # Serve the Dioxus App
 # This command tells the Dioxus CLI to build and serve the ephemeral_web package.
 dx serve --package ephemeral_web
-After running these commands, your backend will be live on http://127.0.0.1:3000 and your frontend will be available at the URL provided by dx (usually http://127.0.0.1:8080).
+# After running these commands, your backend will be live on http://127.0.0.1:3000 and your frontend will be available at the URL provided by dx (usually http://127.0.0.1:8080).
 ```
