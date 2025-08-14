@@ -1,4 +1,4 @@
-# useful commands for Backend
+# Run Backend + Frontend
 
 ## Prerequisites
 
