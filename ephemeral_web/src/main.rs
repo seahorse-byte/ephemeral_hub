@@ -6,7 +6,6 @@ use gloo_timers::future::sleep;
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use web_sys::{File, FormData};
 
 // Define the routes for our application.
 #[derive(Routable, Clone, PartialEq)]
@@ -26,9 +25,10 @@ fn App() -> Element {
     }
 }
 
-/// The component for the home page.
 #[allow(non_snake_case)]
 fn Home() -> Element {
+    static LOGO: Asset = asset!("/assets/logo_no_text_1.png");
+
     let navigator = use_navigator();
     // A coroutine is an async task managed by the Dioxus scheduler.
     // This is the correct way to handle async operations that trigger UI updates.
@@ -92,7 +92,6 @@ fn Home() -> Element {
         }
     });
 
-    // Network connection lines
     let network_lines = rsx! {
         svg {
             xmlns: "http://www.w3.org/2000/svg",
@@ -101,8 +100,8 @@ fn Home() -> Element {
                 linearGradient {
                     id: "networkGradient",
                     x1: "0%", y1: "0%", x2: "100%", y2: "100%",
-                    stop { offset: "0%", stop_color: "#3b82f6", stop_opacity: "0.6" }
-                    stop { offset: "100%", stop_color: "#f97316", stop_opacity: "0.3" }
+                    stop { offset: "0%", stop_color: "#9fc3fdff", stop_opacity: "0.6" }
+                    stop { offset: "100%", stop_color: "#fac198ff", stop_opacity: "0.3" }
                 }
             }
             line { x1: "10%", y1: "20%", x2: "30%", y2: "40%", stroke: "url(#networkGradient)", stroke_width: "1" }
@@ -114,28 +113,28 @@ fn Home() -> Element {
 
     rsx! {
         div {
-            class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden",
+            class: "bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden",
 
             {network_lines}
             {floating_shapes}
 
-            // Main content container
-            div { class: "relative z-10 flex items-center justify-center min-h-screen px-4",
+            img {
+                src: LOGO,
+                class: "mx-auto  h-48 w-auto",
+                alt: "Ephemeral Spaces Logo"
+            }
+            div { class: "relative z-10 flex min-h-screen px-4",
                 div { class: "text-center max-w-4xl mx-auto",
 
-                    // Main title with gradient text effect
                     h1 {
                         class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent",
                         "Ephemeral Spaces"
                     }
-
-                    // Subtitle
                     p {
                         class: "text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed",
                         "Share text and files instantly with a temporary, shareable URL."
                     }
 
-                    // CTA Button with glow effect
                     button {
                         class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-20",
                         onclick: move |_| { coroutine.send(()); },
@@ -208,7 +207,6 @@ fn Home() -> Element {
                 }
             }
 
-            // Background concentric circles
             div { class: "absolute inset-0 opacity-10 pointer-events-none",
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-blue-400/30" }
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-orange-400/20" }
@@ -411,68 +409,6 @@ pub fn Space(props: SpaceProps) -> Element {
             }
         }
     }
-
-    // rsx! {
-    //     div { class: "relative min-h-screen bg-gradient-to-br from-[#0b1d3a] via-[#0f2c5c] to-[#071324] text-white font-sans flex flex-col items-center justify-start p-10",
-
-    //         div { class: "absolute inset-0 pointer-events-none overflow-hidden",
-    //             for i in 0..12 {
-    //                 {
-    //                     let size_class = if i % 2 == 0 { "w-8 h-8" } else { "w-5 h-5" };
-    //                     let color_class = match i % 3 {
-    //                         0 => "bg-blue-400",
-    //                         1 => "bg-cyan-300",
-    //                         _ => "bg-white/40",
-    //                     };
-    //                     let pos_style = format!(
-    //                         "top: {}%; left: {}%; animation-delay: {}ms;",
-    //                         (13 * i) % 100,
-    //                         (17 * i + 23) % 100,
-    //                         i * 180
-    //                     );
-
-    //                     rsx! {
-    //                         div {
-    //                             class: "absolute rounded-md opacity-60 animate-float-slow {size_class} {color_class}",
-    //                             style: "{pos_style}"
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //         div { class: "relative z-10 w-full max-w-3xl bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-white/20",
-    //             h1 { class: "text-3xl font-bold mb-6 text-center",
-    //                 "Space ID: {props.id}"
-    //             }
-    //             Link {
-    //                 to: Route::Home {},
-    //                 class: "text-blue-300 hover:text-blue-400 underline block text-center mb-6",
-    //                 "← Go back home"
-    //             }
-
-    //             if let Some(inner) = &*resource_state {
-    //                 match inner {
-    //                     Some(data) => rsx! {
-    //                         div { class: "flex flex-col gap-8",
-    //                             TextBin { data: data.clone(), space_id: props.id.clone() }
-    //                             FileDrop {
-    //                                 space_id: props.id.clone(),
-    //                                 files: data.files.clone(),
-    //                                 space_resource: space_resource.clone()
-    //                             }
-    //                         }
-    //                     },
-    //                     None => rsx! {
-    //                         p { class: "text-red-300 text-center", "Failed to load space data." }
-    //                     }
-    //                 }
-    //             } else {
-    //                 p { class: "text-gray-300 text-center animate-pulse", "Loading..." }
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 /// A sub-component specifically for the Text Bin UI.
