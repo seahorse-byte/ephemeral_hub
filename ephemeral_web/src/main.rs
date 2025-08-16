@@ -66,26 +66,6 @@ fn Home() -> Element {
         }
     });
 
-    // let floating_shapes = (0..12).map(|i| {
-    //     let size = if i % 3 == 0 { "w-6 h-6" } else { "w-3 h-3" };
-    //     let color = match i % 4 {
-    //         0 => "bg-blue-400",
-    //         1 => "bg-orange-400",
-    //         2 => "bg-white/80",
-    //         _ => "bg-cyan-300",
-    //     };
-    //     let delay = format!("animation-delay: {}ms;", i * 200);
-    //     let top = format!("top: {}%;", (10 * i) % 100);
-    //     let left = format!("left: {}%;", (8 * i) % 100);
-
-    //     rsx! {
-    //         div {
-    //             class: "absolute rounded-sm opacity-60 animate-float-slow {size} {color}",
-    //             style: "{top} {left} {delay}"
-    //         }
-    //     }
-    // });
-
     let floating_shapes = (0..15).map(|i| {
         let (size, shape) = match i % 4 {
             0 => ("w-8 h-8", "rounded-lg"),
@@ -275,73 +255,224 @@ pub fn Space(props: SpaceProps) -> Element {
         }
     });
 
-    //     // Read the resource
     let resource_state = space_resource.read();
 
+    let floating_shapes = (0..18).map(|i| {
+        let (size, shape) = match i % 5 {
+            0 => ("w-6 h-6", "rounded-lg"),
+            1 => ("w-8 h-8", "rounded-full"),
+            2 => ("w-4 h-4", "rounded-sm"),
+            3 => ("w-10 h-10", "rounded-lg"),
+            _ => ("w-5 h-5", "rounded-full"),
+        };
+
+        let color = match i % 4 {
+            0 => "bg-blue-500/30",
+            1 => "bg-orange-400/25",
+            2 => "bg-cyan-400/20",
+            _ => "bg-white/15",
+        };
+
+        let delay = format!("animation-delay: {}ms;", i * 250);
+        let top = format!("top: {}%;", (7 * i + 15) % 85);
+        let left = format!("left: {}%;", (11 * i + 8) % 92);
+
+        rsx! {
+            div {
+                class: "absolute opacity-70 animate-bounce {size} {color} {shape}",
+                style: "{top} {left} {delay}"
+            }
+        }
+    });
+
+    // Network connection lines for Space page
+    let network_lines = rsx! {
+        svg {
+            xmlns: "http://www.w3.org/2000/svg",
+            class: "absolute inset-0 w-full h-full opacity-25 pointer-events-none",
+            defs {
+                linearGradient {
+                    id: "spaceNetworkGradient",
+                    x1: "0%", y1: "0%", x2: "100%", y2: "100%",
+                    stop { offset: "0%", stop_color: "#3b82f6", stop_opacity: "0.5" }
+                    stop { offset: "50%", stop_color: "#06b6d4", stop_opacity: "0.3" }
+                    stop { offset: "100%", stop_color: "#f97316", stop_opacity: "0.4" }
+                }
+                linearGradient {
+                    id: "dataFlow",
+                    x1: "0%", y1: "0%", x2: "100%", y2: "0%",
+                    stop { offset: "0%", stop_color: "#3b82f6", stop_opacity: "0" }
+                    stop { offset: "50%", stop_color: "#06b6d4", stop_opacity: "0.8" }
+                    stop { offset: "100%", stop_color: "#3b82f6", stop_opacity: "0" }
+                }
+            }
+
+            // Main connection lines
+            line { x1: "5%", y1: "15%", x2: "25%", y2: "35%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "75%", y1: "20%", x2: "95%", y2: "40%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "15%", y1: "80%", x2: "35%", y2: "90%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "65%", y1: "70%", x2: "85%", y2: "85%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
+
+            // Data flow lines
+            line { x1: "20%", y1: "50%", x2: "80%", y2: "50%", stroke: "url(#dataFlow)", stroke_width: "2" }
+            line { x1: "50%", y1: "20%", x2: "50%", y2: "80%", stroke: "url(#dataFlow)", stroke_width: "2" }
+
+            // Network nodes
+            circle { cx: "20%", cy: "30%", r: "2", fill: "#3b82f6", opacity: "0.6" }
+            circle { cx: "80%", cy: "25%", r: "3", fill: "#06b6d4", opacity: "0.5" }
+            circle { cx: "25%", cy: "75%", r: "2.5", fill: "#f97316", opacity: "0.4" }
+            circle { cx: "75%", cy: "80%", r: "2", fill: "#3b82f6", opacity: "0.6" }
+        }
+    };
+
     rsx! {
-        div { class: "relative min-h-screen bg-gradient-to-br from-[#0b1d3a] via-[#0f2c5c] to-[#071324] text-white font-sans flex flex-col items-center justify-start p-10",
+        div {
+            class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden",
 
-            // Floating background squares
-            div { class: "absolute inset-0 pointer-events-none overflow-hidden",
-                for i in 0..12 {
-                    {
-                        let size_class = if i % 2 == 0 { "w-8 h-8" } else { "w-5 h-5" };
-                        let color_class = match i % 3 {
-                            0 => "bg-blue-400",
-                            1 => "bg-cyan-300",
-                            _ => "bg-white/40",
-                        };
-                        let pos_style = format!(
-                            "top: {}%; left: {}%; animation-delay: {}ms;",
-                            (13 * i) % 100,
-                            (17 * i + 23) % 100,
-                            i * 180
-                        );
+            {network_lines}
+            {floating_shapes}
 
-                        rsx! {
-                            div {
-                                class: "absolute rounded-md opacity-60 animate-float-slow {size_class} {color_class}",
-                                style: "{pos_style}"
+            // Main content container
+            div { class: "relative z-10 flex flex-col items-center justify-start min-h-screen px-4 py-8",
+
+                // Header with space ID and navigation
+                div { class: "w-full max-w-4xl mb-8",
+                    div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center",
+                        h1 {
+                            class: "text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-white via-blue-400 to-cyan-400 bg-clip-text text-transparent",
+                            "Space: {props.id}"
+                        }
+                        Link {
+                            to: Route::Home {},
+                            class: "inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors duration-300 text-lg hover:scale-105 transform",
+                            svg {
+                                class: "w-5 h-5",
+                                fill: "none",
+                                stroke: "currentColor",
+                                view_box: "0 0 24 24",
+                                path {
+                                    stroke_linecap: "round",
+                                    stroke_linejoin: "round",
+                                    stroke_width: "2",
+                                    d: "M10 19l-7-7m0 0l7-7m-7 7h18"
+                                }
                             }
+                            "Back to Home"
+                        }
+                    }
+                }
+
+                // Main workspace container
+                div { class: "w-full max-w-4xl",
+                    if let Some(inner) = &*resource_state {
+                        match inner {
+                            Some(data) => rsx! {
+                                div { class: "grid gap-8 md:grid-cols-1 lg:grid-cols-2",
+                                    TextBin { data: data.clone(), space_id: props.id.clone() }
+                                    FileDrop {
+                                        space_id: props.id.clone(),
+                                        files: data.files.clone(),
+                                        space_resource: space_resource.clone()
+                                    }
+                                }
+                            },
+                            None => rsx! {
+                                div { class: "bg-red-900/20 backdrop-blur-sm border border-red-500/30 rounded-xl p-8 text-center",
+                                    svg {
+                                        class: "w-16 h-16 text-red-400 mx-auto mb-4",
+                                        fill: "none",
+                                        stroke: "currentColor",
+                                        view_box: "0 0 24 24",
+                                        path {
+                                            stroke_linecap: "round",
+                                            stroke_linejoin: "round",
+                                            stroke_width: "2",
+                                            d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                        }
+                                    }
+                                    p { class: "text-red-300 text-xl", "Failed to load space data" }
+                                }
+                            }
+                        }
+                    } else {
+                        div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center",
+                            div { class: "animate-spin w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full mx-auto mb-4" }
+                            p { class: "text-slate-300 text-xl animate-pulse", "Loading space..." }
                         }
                     }
                 }
             }
 
-            div { class: "relative z-10 w-full max-w-3xl bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-white/20",
-                h1 { class: "text-3xl font-bold mb-6 text-center",
-                    "Space ID: {props.id}"
-                }
-                Link {
-                    to: Route::Home {},
-                    class: "text-blue-300 hover:text-blue-400 underline block text-center mb-6",
-                    "← Go back home"
-                }
-
-
-
-                if let Some(inner) = &*resource_state {
-                    match inner {
-                        Some(data) => rsx! {
-                            div { class: "flex flex-col gap-8",
-                                TextBin { data: data.clone(), space_id: props.id.clone() }
-                                FileDrop {
-                                    space_id: props.id.clone(),
-                                    files: data.files.clone(),
-                                    space_resource: space_resource.clone()
-                                }
-                            }
-                        },
-                        None => rsx! {
-                            p { class: "text-red-300 text-center", "Failed to load space data." }
-                        }
-                    }
-                } else {
-                    p { class: "text-gray-300 text-center animate-pulse", "Loading..." }
-                }
+            // Background geometric patterns
+            div { class: "absolute inset-0 opacity-5 pointer-events-none",
+                div { class: "absolute top-1/4 left-1/4 w-64 h-64 border border-blue-400/20 rounded-full" }
+                div { class: "absolute top-3/4 right-1/4 w-48 h-48 border border-cyan-400/15 rounded-lg rotate-45" }
+                div { class: "absolute bottom-1/4 left-1/2 w-32 h-32 border border-orange-400/10 rounded-full" }
             }
         }
     }
+
+    // rsx! {
+    //     div { class: "relative min-h-screen bg-gradient-to-br from-[#0b1d3a] via-[#0f2c5c] to-[#071324] text-white font-sans flex flex-col items-center justify-start p-10",
+
+    //         div { class: "absolute inset-0 pointer-events-none overflow-hidden",
+    //             for i in 0..12 {
+    //                 {
+    //                     let size_class = if i % 2 == 0 { "w-8 h-8" } else { "w-5 h-5" };
+    //                     let color_class = match i % 3 {
+    //                         0 => "bg-blue-400",
+    //                         1 => "bg-cyan-300",
+    //                         _ => "bg-white/40",
+    //                     };
+    //                     let pos_style = format!(
+    //                         "top: {}%; left: {}%; animation-delay: {}ms;",
+    //                         (13 * i) % 100,
+    //                         (17 * i + 23) % 100,
+    //                         i * 180
+    //                     );
+
+    //                     rsx! {
+    //                         div {
+    //                             class: "absolute rounded-md opacity-60 animate-float-slow {size_class} {color_class}",
+    //                             style: "{pos_style}"
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         div { class: "relative z-10 w-full max-w-3xl bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-10 border border-white/20",
+    //             h1 { class: "text-3xl font-bold mb-6 text-center",
+    //                 "Space ID: {props.id}"
+    //             }
+    //             Link {
+    //                 to: Route::Home {},
+    //                 class: "text-blue-300 hover:text-blue-400 underline block text-center mb-6",
+    //                 "← Go back home"
+    //             }
+
+    //             if let Some(inner) = &*resource_state {
+    //                 match inner {
+    //                     Some(data) => rsx! {
+    //                         div { class: "flex flex-col gap-8",
+    //                             TextBin { data: data.clone(), space_id: props.id.clone() }
+    //                             FileDrop {
+    //                                 space_id: props.id.clone(),
+    //                                 files: data.files.clone(),
+    //                                 space_resource: space_resource.clone()
+    //                             }
+    //                         }
+    //                     },
+    //                     None => rsx! {
+    //                         p { class: "text-red-300 text-center", "Failed to load space data." }
+    //                     }
+    //                 }
+    //             } else {
+    //                 p { class: "text-gray-300 text-center animate-pulse", "Loading..." }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 /// A sub-component specifically for the Text Bin UI.
@@ -374,15 +505,34 @@ fn TextBin(props: TextBinProps) -> Element {
     });
 
     rsx! {
-        div {
-            h2 { "Text Bin" }
+        div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/30 transition-all duration-300",
+            div { class: "flex items-center gap-3 mb-4",
+                div { class: "w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center",
+                    svg {
+                        class: "w-5 h-5 text-blue-400",
+                        fill: "none",
+                        stroke: "currentColor",
+                        view_box: "0 0 24 24",
+                        path {
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                            stroke_width: "2",
+                            d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        }
+                    }
+                }
+                h2 { class: "text-xl font-semibold text-white", "Text Content" }
+            }
+
             textarea {
-                style: "width: 100%; min-height: 200px; font-family: monospace; padding: 10px; border-radius: 8px; border: 1px solid #ccc; color: black;",
+                class: "w-full min-h-[200px] bg-slate-900/50 border border-slate-600/50 rounded-lg p-4 text-slate-100 placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-300 font-mono text-sm resize-none",
+                placeholder: "Enter your text content here...",
                 value: "{text_content}",
                 oninput: move |event| text_content.set(event.value()),
             }
+
             button {
-                style: "animate-pulse-glow text-red-200",
+                class: "mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
                 onclick: move |_| {
                     save_coroutine.send(text_content.read().clone());
                     save_button_state.set("Saving...".to_string());
@@ -393,6 +543,24 @@ fn TextBin(props: TextBinProps) -> Element {
                         save_button_state.set("Save".to_string());
                     });
                 },
+                if save_button_state.read().as_str() == "Saving..." {
+                    div { class: "animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" }
+                } else {
+                    svg {
+                        class: "w-4 h-4",
+                        fill: "none",
+                        stroke: "currentColor",
+                        view_box: "0 0 24 24",
+                        path {
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                            stroke_width: "2",
+                            d: "M5 13l4 4L19 7"
+                        }
+                    }
+                },
+
+
                 "{save_button_state}"
             }
         }
@@ -443,7 +611,10 @@ fn FileDrop(props: FileDropProps) -> Element {
 
     rsx! {
         div {
-            p { "Upload files to share them temporarily." }
+            p {
+                class: "text-white py-4",
+                "Upload files to share them temporarily."
+            }
 
             input {
                 r#type: "file",
@@ -486,11 +657,17 @@ fn FileDrop(props: FileDropProps) -> Element {
                 }
             }
 
-            // List of existing files.
+            p {
+                class: "text-white pt-20",
+                "Files uploaded:"
+            }
             ul {
-                class: "list-disc pl-5 mt-4",
+                class: "list-disc pl-5 mt-4 text-white",
                 for file in props.files.iter() {
-                    li { "{file.filename} ({file.size} bytes)" }
+                    li {
+                        class: "mb-2",
+                        "{file.filename} ({file.size} bytes)"
+                    }
                 }
             }
         }
