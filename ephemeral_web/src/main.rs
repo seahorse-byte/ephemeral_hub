@@ -27,7 +27,7 @@ fn App() -> Element {
 
 #[allow(non_snake_case)]
 fn Home() -> Element {
-    static LOGO: Asset = asset!("/assets/logo_no_text_1.png");
+    static LOGO: Asset = asset!("/assets/logo.png");
 
     let navigator = use_navigator();
     // A coroutine is an async task managed by the Dioxus scheduler.
@@ -118,17 +118,18 @@ fn Home() -> Element {
             {network_lines}
             {floating_shapes}
 
-            img {
-                src: LOGO,
-                class: "mx-auto  h-48 w-auto",
-                alt: "Ephemeral Spaces Logo"
-            }
             div { class: "relative z-10 flex min-h-screen px-4",
-                div { class: "text-center max-w-4xl mx-auto",
+                div { class: "text-center max-w-auto mx-auto",
 
                     h1 {
-                        class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent",
+                        class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent md:flex md:flex-row items-center",
+                        img {
+                            src: LOGO,
+                            class: "mx-auto  h-48 w-auto",
+                            alt: "Ephemeral Spaces Logo"
+                        }
                         "Ephemeral Spaces"
+
                     }
                     p {
                         class: "text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed",
