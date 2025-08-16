@@ -1647,6 +1647,7 @@ dependencies = [
  "dioxus-web",
  "futures-util",
  "gloo-timers",
+ "js-sys",
  "log",
  "reqwest",
  "serde",

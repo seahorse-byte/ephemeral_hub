@@ -20,4 +20,12 @@ log = "0.4.21"
 wasm-logger = "0.2.0"
 futures-util = "0.3.31"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
-web-sys = "0.3.77"
+js-sys = "0.3.77"
+web-sys = { version = "0.3.77", features = [
+    "Blob",
+    "Url",
+    "Window",
+    "Document",
+    "Element",
+    "MouseEvent",
+] }

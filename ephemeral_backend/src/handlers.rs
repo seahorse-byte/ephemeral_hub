@@ -322,7 +322,7 @@ pub async fn download_files(
     let mut zip: ZipWriter<Cursor<&mut Vec<u8>>> = ZipWriter::new(cursor);
 
     // Add the text bin content to the zip.
-    zip.start_file("text_bin.txt", FileOptions::<()>::default())?;
+    zip.start_file("ephemeral_text_bin.txt", FileOptions::<()>::default())?;
     zip.write_all(space.content.as_bytes())?;
 
     // Fetch each file from S3 and add it to the zip.

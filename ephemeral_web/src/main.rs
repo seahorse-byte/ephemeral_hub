@@ -3,9 +3,11 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 use futures_util::stream::StreamExt;
 use gloo_timers::future::sleep;
+use js_sys;
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use web_sys::{Blob, Url};
 
 // Define the routes for our application.
 #[derive(Routable, Clone, PartialEq)]
@@ -256,6 +258,54 @@ pub fn Space(props: SpaceProps) -> Element {
 
     let resource_state = space_resource.read();
 
+    // Coroutine to handle the download process
+    let download_coroutine = use_coroutine({
+        let space_id = props.id.clone();
+        move |mut rx: UnboundedReceiver<()>| {
+            // FIX: Clone the space_id here, outside the async move block.
+            let space_id = space_id.clone();
+            async move {
+                while rx.next().await.is_some() {
+                    let api_url = format!("http://127.0.0.1:3000/api/spaces/{}/download", space_id);
+                    let client = reqwest::Client::new();
+                    match client.get(&api_url).send().await {
+                        Ok(response) => {
+                            if let Ok(bytes) = response.bytes().await {
+                                // Create a blob from the bytes
+                                let blob = Blob::new_with_u8_array_sequence(&js_sys::Array::of1(
+                                    &bytes.to_vec().into(),
+                                ))
+                                .unwrap();
+
+                                // Create a temporary URL for the blob
+                                let url = Url::create_object_url_with_blob(&blob).unwrap();
+
+                                // Create an anchor element to trigger the download
+                                let window = web_sys::window().unwrap();
+                                let document = window.document().unwrap();
+                                let a = document.create_element("a").unwrap();
+                                a.set_attribute("href", &url).unwrap();
+                                a.set_attribute(
+                                    "download",
+                                    &format!("ephemeral_space_{}.zip", space_id),
+                                )
+                                .unwrap();
+                                a.dispatch_event(&web_sys::MouseEvent::new("click").unwrap())
+                                    .unwrap();
+
+                                // Clean up the temporary URL
+                                Url::revoke_object_url(&url).unwrap();
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to download files: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     let floating_shapes = (0..18).map(|i| {
         let (size, shape) = match i % 5 {
             0 => ("w-6 h-6", "rounded-lg"),
@@ -334,13 +384,16 @@ pub fn Space(props: SpaceProps) -> Element {
             // Main content container
             div { class: "relative z-10 flex flex-col items-center justify-start min-h-screen px-4 py-8",
 
-                // Header with space ID and navigation
-                div { class: "w-full max-w-4xl mb-8",
+                div {
+                    class: "flex flex-row max-w-4xl",
+                    // Header with space ID and navigation
+                    div { class: "w-full max-w-4xl mb-8 flex flex-col md:flex-row",
                     div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center",
                         h1 {
                             class: "text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-white via-blue-400 to-cyan-400 bg-clip-text text-transparent",
                             "Space: {props.id}"
                         }
+
                         Link {
                             to: Route::Home {},
                             class: "inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors duration-300 text-lg hover:scale-105 transform",
@@ -360,8 +413,7 @@ pub fn Space(props: SpaceProps) -> Element {
                         }
                     }
                 }
-
-                // Main workspace container
+                }
                 div { class: "w-full max-w-4xl",
                     if let Some(inner) = &*resource_state {
                         match inner {
@@ -398,6 +450,29 @@ pub fn Space(props: SpaceProps) -> Element {
                             div { class: "animate-spin w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full mx-auto mb-4" }
                             p { class: "text-slate-300 text-xl animate-pulse", "Loading space..." }
                         }
+                    }
+                }
+
+
+                // Download All Button
+                div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center w-full mx-auto mt-8",
+                    button {
+                        class: "inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-150",
+                        onclick: move |_| download_coroutine.send(()),
+                        svg {
+                            class: "w-5 h-5",
+                            xmlns: "http://www.w3.org/2000/svg",
+                            fill: "none",
+                            view_box: "0 0 24 24",
+                            stroke_width: "2",
+                            stroke: "currentColor",
+                            path {
+                                stroke_linecap: "round",
+                                stroke_linejoin: "round",
+                                d: "M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                            }
+                        }
+                        "Download All Assets"
                     }
                 }
             }
@@ -469,7 +544,7 @@ fn TextBin(props: TextBinProps) -> Element {
             }
 
             button {
-                class: "mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
+                class: "inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-150",
                 onclick: move |_| {
                     save_coroutine.send(text_content.read().clone());
                     save_button_state.set("Saving...".to_string());
@@ -548,6 +623,7 @@ fn FileDrop(props: FileDropProps) -> Element {
 
     rsx! {
         div {
+            class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center w-full mx-auto mt-8",
             p {
                 class: "text-white py-4",
                 "Upload files to share them temporarily."
@@ -586,7 +662,7 @@ fn FileDrop(props: FileDropProps) -> Element {
             // The button that triggers the file input.
             label {
                 r#for: "file-upload",
-                class: "cursor-pointer bg-blue-500 text-white py-2 px-4 rounded",
+                class: "cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-150",
                 if is_uploading() {
                     "Uploading..."
                 } else {
