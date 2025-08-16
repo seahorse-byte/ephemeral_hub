@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post, put},
 };
 use deadpool_redis::{Config, Runtime};
-use std::env;
+use std::{env, sync::Arc};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
