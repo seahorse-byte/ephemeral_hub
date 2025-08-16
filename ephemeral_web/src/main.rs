@@ -220,7 +220,7 @@ fn Home() -> Element {
 }
 
 #[derive(PartialEq, Props, Clone)]
-struct SpaceProps {
+pub struct SpaceProps {
     id: String,
 }
 
