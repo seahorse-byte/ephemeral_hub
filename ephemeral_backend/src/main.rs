@@ -1,25 +1,26 @@
+use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_s3::{Client, config::Region};
 use axum::{
     Router,
     routing::{get, post, put},
 };
 use deadpool_redis::{Config, Runtime};
 use std::env;
-use tracing::info;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-// --- ADD these new `use` statements ---
-use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::{Client, config::Region};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use websocket::AppWsState;
 
 mod handlers;
+mod websocket;
 
 // --- UPDATE the AppState type definition ---
 #[derive(Clone)]
 pub struct AppState {
     pub redis: deadpool_redis::Pool,
     pub s3: Client,
+    pub ws_state: Arc<AppWsState>,
 }
 
 #[tokio::main]
@@ -32,20 +33,16 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // --- SETUP S3 CLIENT ---
+    // --- S3 Client Setup ---
     let s3_endpoint_url =
         env::var("S3_ENDPOINT_URL").unwrap_or_else(|_| "http://127.0.0.1:9000".to_string());
     let s3_region = Region::new("us-east-1");
-
     let region_provider = RegionProviderChain::first_try(s3_region.clone());
-
-    // --- THIS IS THE FIX for the deprecation warning ---
     let s3_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .region(region_provider)
         .endpoint_url(&s3_endpoint_url)
         .load()
         .await;
-
     let s3_client = Client::new(&s3_config);
     info!("Connected to S3-compatible storage.");
 
@@ -57,10 +54,14 @@ async fn main() {
         .expect("Failed to create Redis pool.");
     info!("Connected to Redis and created connection pool.");
 
-    // --- COMBINE into the new AppState ---
+    // --- WebSocket State Setup ---
+    let ws_state = Arc::new(AppWsState::default());
+
+    // --- AppState Setup ---
     let app_state = AppState {
         redis: redis_pool,
         s3: s3_client,
+        ws_state,
     };
 
     // FIX: Create a CORS layer to allow requests from the web frontend.
@@ -79,8 +80,12 @@ async fn main() {
         .route("/api/spaces/{id}/files", post(handlers::upload_file))
         .route("/api/spaces/{id}/download", get(handlers::download_files))
         .with_state(app_state)
+        // WebSocket route
+        .route("/ws/spaces/:id", get(websocket::websocket_handler))
+        .with_state(app_state)
         .layer(cors);
 
+    // --- Server Launch ---
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
     info!("🚀 Server listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
