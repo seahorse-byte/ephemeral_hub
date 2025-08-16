@@ -623,7 +623,7 @@ fn FileDrop(props: FileDropProps) -> Element {
 
     rsx! {
         div {
-            class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center w-full mx-auto",
+            class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/30 transition-all duration-300",
               div { class: "flex items-center gap-3 mb-4",
                 div { class: "w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center",
                     svg {
