@@ -736,13 +736,26 @@ enum WsClientMsg {
 
 #[allow(non_snake_case)]
 fn Whiteboard(props: WhiteboardProps) -> Element {
-    // A signal to hold all the paths drawn on the whiteboard
-    let paths = use_signal::<Vec<PathData>>(Vec::new);
-    // A signal to track the path currently being drawn by the user
+    let mut paths = use_signal::<Vec<PathData>>(Vec::new);
     let mut current_path = use_signal::<Option<PathData>>(|| None);
-    // Generate a unique ID for this user
-    // FIX: Use Uuid::new_v4() to generate a version 4 UUID.
     let user_id = use_memo(|| Uuid::new_v4().to_string());
+
+    // A helper: derive color from user_id (stable hash → pick from palette)
+    fn color_for_user(user_id: &str) -> String {
+        let palette = vec![
+            "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6",
+            "#bcf60c", "#fabebe", "#008080", "#e6beff", "#9a6324", "#fffac8", "#800000", "#aaffc3",
+            "#808000", "#ffd8b1", "#000075", "#808080",
+        ];
+        let mut hash = 0u64;
+        for b in user_id.as_bytes() {
+            hash = hash.wrapping_mul(31).wrapping_add(*b as u64);
+        }
+        let idx = (hash % palette.len() as u64) as usize;
+        palette[idx].to_string()
+    }
+
+    let my_color = color_for_user(&user_id());
 
     let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsClientMsg>| {
         let paths = paths.clone();
@@ -757,10 +770,9 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                 }
             };
 
-            // Split into a Sink (write) and Stream (read)
             let (mut write, mut read) = ws.split();
 
-            // Spawn a reader task to handle incoming messages
+            // Incoming messages
             spawn({
                 let mut paths = paths.clone();
                 async move {
@@ -768,7 +780,9 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                         if let Ok(client_msg) = serde_json::from_str::<WsClientMsg>(&text) {
                             let mut current_paths = paths.write();
                             match client_msg {
-                                WsClientMsg::AddPath(new_path) => current_paths.push(new_path),
+                                WsClientMsg::AddPath(new_path) => {
+                                    current_paths.push(new_path);
+                                }
                                 WsClientMsg::UpdatePath(id, point) => {
                                     if let Some(path) =
                                         current_paths.iter_mut().find(|p| p.id == id)
@@ -783,7 +797,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                 }
             });
 
-            // Outgoing messages loop
+            // Outgoing messages
             while let Some(msg_to_send) = rx.next().await {
                 let json_msg = serde_json::to_string(&msg_to_send).unwrap();
                 if write.send(GlooWsMessage::Text(json_msg)).await.is_err() {
@@ -808,59 +822,55 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
     rsx! {
         div {
             class: "bg-white p-6 rounded-lg shadow-md border border-gray-200 col-span-1 lg:col-span-2",
-            h2 {
-                class: "text-xl font-bold text-gray-800 mb-4",
-                "Collaborative Whiteboard"
-            }
+            h2 { class: "text-xl font-bold text-gray-800 mb-4", "Collaborative Whiteboard" }
+
             svg {
                 class: "w-full h-[400px] border border-gray-300 rounded-md bg-gray-50",
                 prevent_default: "onmousedown onmousemove",
+
                 onmousedown: move |evt| {
                     let path_id = format!("{}-{}", user_id, Uuid::new_v4());
                     let new_path = PathData {
                         id: path_id.clone(),
                         points: vec![(evt.element_coordinates().x, evt.element_coordinates().y)],
-                        color: "black".to_string(),
+                        color: my_color.clone(),   // <-- assign my color
                         stroke_width: 2.0,
                     };
+
+                    paths.write().push(new_path.clone());
                     current_path.set(Some(new_path.clone()));
-                    let msg = WsClientMsg::AddPath(new_path);
-                    ws_coroutine.send(msg);
+                    ws_coroutine.send(WsClientMsg::AddPath(new_path));
                 },
+
                 onmousemove: move |evt| {
                     if let Some(mut path) = current_path.write().as_mut() {
                         let point = (evt.element_coordinates().x, evt.element_coordinates().y);
                         path.points.push(point);
-                        let msg = WsClientMsg::UpdatePath(path.id.clone(), point);
-                        ws_coroutine.send(msg);
-                    }
-                },
-                onmouseup: move |_| {
-                    if let Some(path) = current_path.take() {
-                        let msg = WsClientMsg::EndPath(path.id);
-                        ws_coroutine.send(msg);
-                    }
-                },
-                onmouseleave: move |_| {
-                    if let Some(path) = current_path.take() {
-                        let msg = WsClientMsg::EndPath(path.id);
-                        ws_coroutine.send(msg);
+
+                        if let Some(last) = paths.write().last_mut() {
+                            if last.id == path.id {
+                                last.points.push(point);
+                            }
+                        }
+
+                        ws_coroutine.send(WsClientMsg::UpdatePath(path.id.clone(), point));
                     }
                 },
 
-                // Render all paths from other users
-                for path in paths.read().iter() {
-                    path {
-                        d: "{to_svg_path(&path.points)}",
-                        stroke: "{path.color}",
-                        stroke_width: "{path.stroke_width}",
-                        fill: "none",
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round"
+                onmouseup: move |_| {
+                    if let Some(path) = current_path.take() {
+                        ws_coroutine.send(WsClientMsg::EndPath(path.id));
                     }
-                }
-                // Render the path currently being drawn by this user
-                if let Some(path) = current_path.read().as_ref() {
+                },
+
+                onmouseleave: move |_| {
+                    if let Some(path) = current_path.take() {
+                        ws_coroutine.send(WsClientMsg::EndPath(path.id));
+                    }
+                },
+
+                // Draw all paths
+                for path in paths.read().iter() {
                     path {
                         d: "{to_svg_path(&path.points)}",
                         stroke: "{path.color}",
