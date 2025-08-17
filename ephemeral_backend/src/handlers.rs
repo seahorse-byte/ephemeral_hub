@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{AppState, shared_types::PathData};
 use aws_sdk_s3::primitives::ByteStream;
 use axum::{
     Json,
@@ -132,6 +132,7 @@ pub struct Space {
     pub content: String,
     pub created_at: DateTime<Utc>,
     pub files: Vec<FileInfo>,
+    pub whiteboard: Vec<PathData>,
 }
 
 // Data model for file metadata.
@@ -158,11 +159,13 @@ pub async fn create_space(
 
     let id = nanoid!(10);
     let now = Utc::now();
+
     let space = Space {
         id: id.clone(),
         content: String::from("Welcome to your ephemeral space!"),
         created_at: now,
         files: Vec::new(),
+        whiteboard: Vec::new(),
     };
 
     let space_json = serde_json::to_string(&space).unwrap();

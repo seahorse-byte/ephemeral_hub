@@ -1,3 +1,4 @@
+use crate::{handlers::Space, shared_types::{PathData, WsMessage}, AppState};
 use axum::{
     extract::{
         Path, State,
@@ -60,9 +61,36 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppWsState>, space_id: Stri
     // Task to handle incoming messages from the client.
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            // FIX: Convert the Utf8Bytes from the message into the String expected by the broadcast channel.
             if tx.send(text.to_string()).is_err() {
-                // This happens if there are no active subscribers.
+                // No active subscribers, but that's okay.
+            }
+
+            // ...and we also save it to Redis.
+
+            if let Ok(WsMessage::PathCompleted(path)) = serde_json::from_str(&text) {
+                let mut conn = match state.redis.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        warn!("Failed to get Redis connection: {}", e);
+                        continue;
+                    }
+                };
+
+                let key = format!("space:{}", space_id);
+                
+                // Fetch the current space data
+                if let Ok(Some(space_json)) = conn.get::<_, Option<String>>(&key).await {
+                    if var space: Space = serde_json::from_str(&space_json).unwrap();
+                    
+                    // Add the new path and save it back
+                    space.whiteboard.push(path);
+                    let updated_json = serde_json::to_string(&space).unwrap();
+                    let ttl: isize = conn.ttl(&key).await.unwrap_or(-1);
+
+                    if ttl > 0 {
+                        let _: () = conn.set_ex(&key, updated_json, ttl as usize).await.unwrap();
+                    }
+                }
             }
         }
     });
