@@ -8,8 +8,6 @@ use js_sys;
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::time::Duration;
 use uuid::Uuid;
 use web_sys::{Blob, Url};
