@@ -1,8 +1,10 @@
 use clap::{Parser, Subcommand};
+use reqwest::multipart;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
-use std::io::{self, Read}; // Import Read for stdin
-use std::time::Duration;
+use std::io::{self, Read};
+use std::path::PathBuf; // For handling file paths
+use tokio::fs; // For async file reading
 
 // The base URL for our backend API.
 const API_BASE_URL: &str = "http://127.0.0.1:3000";
@@ -25,6 +27,13 @@ enum Commands {
         /// The full API URL of the space (e.g., http://.../api/spaces/xyz)
         url: String,
     },
+    /// Upload a file to a space.
+    Upload {
+        /// The path to the file to upload.
+        file_path: PathBuf,
+        /// The full API URL of the space.
+        url: String,
+    },
 }
 
 // This struct is used to deserialize the JSON response from the backend.
@@ -38,7 +47,7 @@ struct CreateSpaceResponse {
 
 // Helper function to extract the space ID from a URL.
 fn extract_id_from_url(url: &str) -> Option<String> {
-    url.split('/').last().map(|s| s.to_string())
+    url.rsplit_once("/").map(|(_, id)| id.to_string())
 }
 
 #[tokio::main]
@@ -107,6 +116,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     } else {
                         sp.stop_with_message(
                             format!("✗ Error: Failed to pipe text (Status: {})", res.status())
+                                .into(),
+                        );
+                    }
+                }
+                Err(e) => {
+                    sp.stop_with_message(
+                        format!("✗ Error: Could not connect to the server: {}", e).into(),
+                    );
+                }
+            }
+        }
+        Commands::Upload { file_path, url } => {
+            if !file_path.exists() {
+                eprintln!("✗ Error: File not found at '{}'", file_path.display());
+                return Ok(());
+            }
+
+            let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
+            let mut sp = Spinner::new(
+                Spinners::Dots9,
+                format!("Uploading '{}'...", file_name).into(),
+            );
+
+            let space_id = match extract_id_from_url(&url) {
+                Some(id) => id,
+                None => {
+                    sp.stop_with_message("✗ Invalid space URL provided.".into());
+                    return Ok(());
+                }
+            };
+
+            // Read the file's contents asynchronously.
+            let file_bytes = fs::read(&file_path).await?;
+            let part = multipart::Part::bytes(file_bytes).file_name(file_name);
+            let form = multipart::Form::new().part("file", part);
+
+            let client = reqwest::Client::new();
+            let api_url = format!("{}/api/spaces/{}/files", API_BASE_URL, space_id);
+
+            let response = client.post(&api_url).multipart(form).send().await;
+
+            match response {
+                Ok(res) => {
+                    if res.status().is_success() {
+                        sp.stop_with_message("✓ File uploaded successfully!".into());
+                    } else {
+                        sp.stop_with_message(
+                            format!("✗ Error: Failed to upload file (Status: {})", res.status())
                                 .into(),
                         );
                     }
