@@ -9,9 +9,7 @@ pub struct PathData {
     pub color: String,
     pub stroke_width: f64,
 }
-
 // Message format for WebSocket communication.
-// We only need one message type now: sending a completed path.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub enum WsMessage {
     PathCompleted(PathData),

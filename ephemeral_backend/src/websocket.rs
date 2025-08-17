@@ -68,6 +68,31 @@ async fn handle_socket(socket: WebSocket, state: AppState, space_id: String) {
                 // No active subscribers, but that's okay.
             }
 
+            // if let Ok(WsMessage::PathCompleted(path)) = serde_json::from_str(&text) {
+            //     let mut conn = match state.redis.get().await {
+            //         Ok(conn) => conn,
+            //         Err(e) => {
+            //             warn!("Failed to get Redis connection: {}", e);
+            //             continue;
+            //         }
+            //     };
+
+            //     let key = format!("space:{}", recv_task_space_id);
+
+            //     // Fetch the current space data
+            //     if let Ok(Some(space_json)) = conn.get::<_, Option<String>>(&key).await {
+            //         if let Ok(mut space) = serde_json::from_str::<Space>(&space_json) {
+            //             // Add the new path and save it back
+            //             space.whiteboard.push(path);
+            //             let updated_json = serde_json::to_string(&space).unwrap();
+            //             let ttl: isize = conn.ttl(&key).await.unwrap_or(-1);
+
+            //             if ttl > 0 {
+            //                 let _: () = conn.set_ex(&key, updated_json, ttl as u64).await.unwrap();
+            //             }
+            //         }
+            //     }
+            // }
             if let Ok(WsMessage::PathCompleted(path)) = serde_json::from_str(&text) {
                 let mut conn = match state.redis.get().await {
                     Ok(conn) => conn,

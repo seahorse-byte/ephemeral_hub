@@ -235,6 +235,7 @@ struct SpaceData {
     content: String,
     created_at: String,
     files: Vec<FileInfo>,
+    whiteboard: Vec<PathData>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug)]
@@ -429,7 +430,7 @@ pub fn Space(props: SpaceProps) -> Element {
                                         files: data.files.clone(),
                                         space_resource: space_resource.clone()
                                     }
-                                    Whiteboard { space_id: props.id.clone() }
+                                    Whiteboard { space_id: props.id.clone(), initial_paths: data.whiteboard.clone() }
                                 }
                             },
                             None => rsx! {
@@ -711,11 +712,6 @@ fn FileDrop(props: FileDropProps) -> Element {
 
 // ---  WHITEBOARD COMPONENT ---
 
-#[derive(PartialEq, Props, Clone)]
-struct WhiteboardProps {
-    space_id: String,
-}
-
 // Data structure for a single drawing path
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 struct PathData {
@@ -725,17 +721,28 @@ struct PathData {
     stroke_width: f64,
 }
 
+// Message format for WebSocket communication
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-enum WsClientMsg {
-    AddPath(PathData),
-    UpdatePath(String, (f64, f64)),
-    EndPath(String),
+enum WsMessage {
+    PathCompleted(PathData),
 }
 
+#[derive(PartialEq, Props, Clone)]
+struct WhiteboardProps {
+    space_id: String,
+    initial_paths: Vec<PathData>,
+}
 #[allow(non_snake_case)]
 fn Whiteboard(props: WhiteboardProps) -> Element {
-    let mut paths = use_signal::<Vec<PathData>>(Vec::new);
+    // let mut paths = use_signal::<Vec<PathData>>(Vec::new);
+    // let mut current_path = use_signal::<Option<PathData>>(|| None);
+    // let user_id = use_memo(|| Uuid::new_v4().to_string());
+
+    //     // Initialize the signal with the server data.
+    let mut paths = use_signal(|| props.initial_paths.clone());
+    // A signal to track the path currently being drawn by the user
     let mut current_path = use_signal::<Option<PathData>>(|| None);
+    // Generate a unique ID for this user
     let user_id = use_memo(|| Uuid::new_v4().to_string());
 
     // A helper: derive color from user_id (stable hash → pick from palette)
@@ -755,7 +762,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     let my_color = color_for_user(&user_id());
 
-    let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsClientMsg>| {
+    let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsMessage>| {
         let paths = paths.clone();
         let ws_url = format!("ws://127.0.0.1:3000/ws/spaces/{}", props.space_id);
 
@@ -775,20 +782,11 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                 let mut paths = paths.clone();
                 async move {
                     while let Some(Ok(GlooWsMessage::Text(text))) = read.next().await {
-                        if let Ok(client_msg) = serde_json::from_str::<WsClientMsg>(&text) {
-                            let mut current_paths = paths.write();
+                        if let Ok(client_msg) = serde_json::from_str::<WsMessage>(&text) {
                             match client_msg {
-                                WsClientMsg::AddPath(new_path) => {
-                                    current_paths.push(new_path);
+                                WsMessage::PathCompleted(new_path) => {
+                                    paths.write().push(new_path);
                                 }
-                                WsClientMsg::UpdatePath(id, point) => {
-                                    if let Some(path) =
-                                        current_paths.iter_mut().find(|p| p.id == id)
-                                    {
-                                        path.points.push(point);
-                                    }
-                                }
-                                WsClientMsg::EndPath(_) => {}
                             }
                         }
                     }
@@ -831,44 +829,51 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                     let new_path = PathData {
                         id: path_id.clone(),
                         points: vec![(evt.element_coordinates().x, evt.element_coordinates().y)],
-                        color: my_color.clone(),   // <-- assign my color
+                        color: my_color.clone(),
                         stroke_width: 2.0,
                     };
-
-                    paths.write().push(new_path.clone());
-                    current_path.set(Some(new_path.clone()));
-                    ws_coroutine.send(WsClientMsg::AddPath(new_path));
+                    current_path.set(Some(new_path));
                 },
 
                 onmousemove: move |evt| {
-                    if let Some(mut path) = current_path.write().as_mut() {
+                    if let Some(path) = current_path.write().as_mut() {
                         let point = (evt.element_coordinates().x, evt.element_coordinates().y);
                         path.points.push(point);
-
-                        if let Some(last) = paths.write().last_mut() {
-                            if last.id == path.id {
-                                last.points.push(point);
-                            }
-                        }
-
-                        ws_coroutine.send(WsClientMsg::UpdatePath(path.id.clone(), point));
                     }
                 },
 
                 onmouseup: move |_| {
                     if let Some(path) = current_path.take() {
-                        ws_coroutine.send(WsClientMsg::EndPath(path.id));
+                        // Add the completed path to our local state immediately for responsiveness.
+                        paths.write().push(path.clone());
+                        // Send the completed path to the server.
+                        ws_coroutine.send(WsMessage::PathCompleted(path));
                     }
                 },
 
                 onmouseleave: move |_| {
                     if let Some(path) = current_path.take() {
-                        ws_coroutine.send(WsClientMsg::EndPath(path.id));
+                        // Add the completed path to our local state immediately.
+                        paths.write().push(path.clone());
+                        // Send the completed path to the server.
+                        ws_coroutine.send(WsMessage::PathCompleted(path));
                     }
                 },
 
-                // Draw all paths
+
+                // Render all paths
                 for path in paths.read().iter() {
+                    path {
+                        d: "{to_svg_path(&path.points)}",
+                        stroke: "{path.color}",
+                        stroke_width: "{path.stroke_width}",
+                        fill: "none",
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round"
+                    }
+                }
+                // Render the path currently being drawn by this user
+                if let Some(path) = current_path.read().as_ref() {
                     path {
                         d: "{to_svg_path(&path.points)}",
                         stroke: "{path.color}",
