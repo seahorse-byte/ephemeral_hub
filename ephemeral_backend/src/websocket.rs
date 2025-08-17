@@ -1,17 +1,14 @@
 use axum::{
     extract::{
-        Path, State, WebSocketUpgrade,
-        ws::{Message, WebSocket},
+        Path, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::IntoResponse,
 };
-use futures_util::{
-    sink::SinkExt,
-    stream::{SplitSink, SplitStream, StreamExt},
-};
+use futures_util::{sink::SinkExt, stream::StreamExt};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{Mutex, broadcast};
-use tracing::{info, warn};
+use tracing::info;
 
 /// The shared state for our WebSocket rooms.
 /// We use a Mutex to safely access the HashMap of rooms from multiple threads.
@@ -53,7 +50,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppWsState>, space_id: Stri
     // Task to forward messages from the broadcast channel to the client.
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            if sender.send(Message::Text(msg)).await.is_err() {
+            // FIX: Convert the String from the broadcast channel into the type expected by Message::Text.
+            if sender.send(Message::Text(msg.into())).await.is_err() {
                 break;
             }
         }
@@ -62,8 +60,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppWsState>, space_id: Stri
     // Task to handle incoming messages from the client.
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            // Broadcast the received message to all clients in the room.
-            if tx.send(text).is_err() {
+            // FIX: Convert the Utf8Bytes from the message into the String expected by the broadcast channel.
+            if tx.send(text.to_string()).is_err() {
                 // This happens if there are no active subscribers.
             }
         }

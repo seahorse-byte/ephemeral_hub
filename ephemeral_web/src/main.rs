@@ -1,15 +1,19 @@
 // The prelude brings all the essential Dioxus items into scope.
 use dioxus::prelude::*;
 use dioxus_router::prelude::*;
-use futures_util::stream::StreamExt;
+use futures::{SinkExt, StreamExt};
+use gloo_net::websocket::{futures::WebSocket, Message as GlooWsMessage};
 use gloo_timers::future::sleep;
 use js_sys;
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
+use serde_json;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
+use uuid::Uuid;
 use web_sys::{Blob, Url};
 
-// Define the routes for our application.
 #[derive(Routable, Clone, PartialEq)]
 #[rustfmt::skip]
 enum Route {
@@ -23,7 +27,10 @@ enum Route {
 #[allow(non_snake_case)]
 fn App() -> Element {
     rsx! {
-        Router::<Route> {}
+        main {
+            class: "",
+            Router::<Route> {}
+        }
     }
 }
 
@@ -32,7 +39,6 @@ fn Home() -> Element {
     static LOGO: Asset = asset!("/assets/logo.png");
 
     let navigator = use_navigator();
-    // A coroutine is an async task managed by the Dioxus scheduler.
     // This is the correct way to handle async operations that trigger UI updates.
     let coroutine = use_coroutine(move |mut rx: UnboundedReceiver<()>| {
         // The coroutine needs its own clone of the navigator.
@@ -425,6 +431,7 @@ pub fn Space(props: SpaceProps) -> Element {
                                         files: data.files.clone(),
                                         space_resource: space_resource.clone()
                                     }
+                                    Whiteboard { space_id: props.id.clone() }
                                 }
                             },
                             None => rsx! {
@@ -697,6 +704,175 @@ fn FileDrop(props: FileDropProps) -> Element {
                     li {
                         class: "mb-2",
                         "{file.filename} ({file.size} bytes)"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---  WHITEBOARD COMPONENT ---
+
+#[derive(PartialEq, Props, Clone)]
+struct WhiteboardProps {
+    space_id: String,
+}
+
+// Data structure for a single drawing path
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+struct PathData {
+    id: String,
+    points: Vec<(f64, f64)>,
+    color: String,
+    stroke_width: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+enum WsClientMsg {
+    AddPath(PathData),
+    UpdatePath(String, (f64, f64)),
+    EndPath(String),
+}
+
+#[allow(non_snake_case)]
+fn Whiteboard(props: WhiteboardProps) -> Element {
+    // A signal to hold all the paths drawn on the whiteboard
+    let mut paths = use_signal::<Vec<PathData>>(Vec::new);
+    // A signal to track the path currently being drawn by the user
+    let mut current_path = use_signal::<Option<PathData>>(|| None);
+    // Generate a unique ID for this user
+    // FIX: Use Uuid::new_v4() to generate a version 4 UUID.
+    let user_id = use_memo(|| Uuid::new_v4().to_string());
+
+    let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsClientMsg>| {
+        let paths = paths.clone();
+        let ws_url = format!("ws://127.0.0.1:3000/ws/spaces/{}", props.space_id);
+
+        async move {
+            let ws = match WebSocket::open(&ws_url) {
+                Ok(ws) => ws,
+                Err(e) => {
+                    log::error!("Failed to connect to WebSocket: {:?}", e);
+                    return;
+                }
+            };
+
+            // Use Rc<RefCell<>> for interior mutability in a single-threaded context
+            let ws = Rc::new(RefCell::new(ws));
+
+            // Spawn a reader task to handle incoming messages
+            spawn({
+                let ws = ws.clone();
+                let mut paths = paths.clone();
+                async move {
+                    while let Some(Ok(GlooWsMessage::Text(text))) = ws.borrow_mut().next().await {
+                        if let Ok(client_msg) = serde_json::from_str::<WsClientMsg>(&text) {
+                            let mut current_paths = paths.write();
+                            match client_msg {
+                                WsClientMsg::AddPath(new_path) => current_paths.push(new_path),
+                                WsClientMsg::UpdatePath(id, point) => {
+                                    if let Some(path) =
+                                        current_paths.iter_mut().find(|p| p.id == id)
+                                    {
+                                        path.points.push(point);
+                                    }
+                                }
+                                WsClientMsg::EndPath(_) => {}
+                            }
+                        }
+                    }
+                }
+            });
+
+            while let Some(msg_to_send) = rx.next().await {
+                let json_msg = serde_json::to_string(&msg_to_send).unwrap();
+                if ws
+                    .borrow_mut()
+                    .send(GlooWsMessage::Text(json_msg))
+                    .await
+                    .is_err()
+                {
+                    log::error!("WebSocket connection closed. Cannot send message.");
+                    break;
+                }
+            }
+        }
+    });
+
+    let to_svg_path = |points: &Vec<(f64, f64)>| -> String {
+        if points.is_empty() {
+            return String::new();
+        }
+        let mut d = format!("M {} {}", points[0].0, points[0].1);
+        for p in points.iter().skip(1) {
+            d.push_str(&format!(" L {} {}", p.0, p.1));
+        }
+        d
+    };
+
+    rsx! {
+        div {
+            class: "bg-white p-6 rounded-lg shadow-md border border-gray-200 col-span-1 lg:col-span-2",
+            h2 {
+                class: "text-xl font-bold text-gray-800 mb-4",
+                "Collaborative Whiteboard"
+            }
+            svg {
+                class: "w-full h-[400px] border border-gray-300 rounded-md bg-gray-50",
+                prevent_default: "onmousedown onmousemove",
+                onmousedown: move |evt| {
+                    let path_id = format!("{}-{}", user_id, Uuid::new_v4());
+                    let new_path = PathData {
+                        id: path_id.clone(),
+                        points: vec![(evt.element_coordinates().x, evt.element_coordinates().y)],
+                        color: "black".to_string(),
+                        stroke_width: 2.0,
+                    };
+                    current_path.set(Some(new_path.clone()));
+                    let msg = WsClientMsg::AddPath(new_path);
+                    ws_coroutine.send(msg);
+                },
+                onmousemove: move |evt| {
+                    if let Some(mut path) = current_path.write().as_mut() {
+                        let point = (evt.element_coordinates().x, evt.element_coordinates().y);
+                        path.points.push(point);
+                        let msg = WsClientMsg::UpdatePath(path.id.clone(), point);
+                        ws_coroutine.send(msg);
+                    }
+                },
+                onmouseup: move |_| {
+                    if let Some(path) = current_path.take() {
+                        let msg = WsClientMsg::EndPath(path.id);
+                        ws_coroutine.send(msg);
+                    }
+                },
+                onmouseleave: move |_| {
+                    if let Some(path) = current_path.take() {
+                        let msg = WsClientMsg::EndPath(path.id);
+                        ws_coroutine.send(msg);
+                    }
+                },
+
+                // Render all paths from other users
+                for path in paths.read().iter() {
+                    path {
+                        d: "{to_svg_path(&path.points)}",
+                        stroke: "{path.color}",
+                        stroke_width: "{path.stroke_width}",
+                        fill: "none",
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round"
+                    }
+                }
+                // Render the path currently being drawn by this user
+                if let Some(path) = current_path.read().as_ref() {
+                    path {
+                        d: "{to_svg_path(&path.points)}",
+                        stroke: "{path.color}",
+                        stroke_width: "{path.stroke_width}",
+                        fill: "none",
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round"
                     }
                 }
             }

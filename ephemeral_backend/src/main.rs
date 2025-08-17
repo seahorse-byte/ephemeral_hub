@@ -61,16 +61,19 @@ async fn main() {
     let app_state = AppState {
         redis: redis_pool,
         s3: s3_client,
-        ws_state,
+        ws_state: ws_state.clone(),
     };
 
-    // FIX: Create a CORS layer to allow requests from the web frontend.
-    // For production, you would restrict this to your specific frontend domain
-    // instead of using `Any`.
+    // --- CORS Setup ---
     let cors = CorsLayer::new()
-        .allow_origin(Any) // Allows any origin
-        .allow_methods(Any) // Allows any method (GET, POST, etc.)
-        .allow_headers(Any); // Allows any header
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    // Create a separate router for WebSocket handlers that only gets the WebSocket state.
+    let ws_router = Router::new()
+        .route("/ws/spaces/{id}", get(websocket::websocket_handler)) // FIX: Use {id} syntax
+        .with_state(ws_state);
 
     // --- ADD the new routes to the router ---
     let app = Router::new()
@@ -80,9 +83,7 @@ async fn main() {
         .route("/api/spaces/{id}/files", post(handlers::upload_file))
         .route("/api/spaces/{id}/download", get(handlers::download_files))
         .with_state(app_state)
-        // WebSocket route
-        .route("/ws/spaces/:id", get(websocket::websocket_handler))
-        .with_state(app_state)
+        .merge(ws_router) // Merge the WebSocket router into the main app.
         .layer(cors);
 
     // --- Server Launch ---
