@@ -13,9 +13,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use websocket::AppWsState;
 
 mod handlers;
+pub mod shared_types;
 mod websocket;
 
-// --- UPDATE the AppState type definition ---
 #[derive(Clone)]
 pub struct AppState {
     pub redis: deadpool_redis::Pool,
@@ -61,7 +61,7 @@ async fn main() {
     let app_state = AppState {
         redis: redis_pool,
         s3: s3_client,
-        ws_state: ws_state.clone(),
+        ws_state,
     };
 
     // --- CORS Setup ---
@@ -70,11 +70,6 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    // Create a separate router for WebSocket handlers that only gets the WebSocket state.
-    let ws_router = Router::new()
-        .route("/ws/spaces/{id}", get(websocket::websocket_handler)) // FIX: Use {id} syntax
-        .with_state(ws_state);
-
     // --- ADD the new routes to the router ---
     let app = Router::new()
         .route("/api/spaces", post(handlers::create_space))
@@ -82,8 +77,8 @@ async fn main() {
         .route("/api/spaces/{id}/text", put(handlers::update_text_bin))
         .route("/api/spaces/{id}/files", post(handlers::upload_file))
         .route("/api/spaces/{id}/download", get(handlers::download_files))
+        .route("/ws/spaces/{id}", get(websocket::websocket_handler))
         .with_state(app_state)
-        .merge(ws_router) // Merge the WebSocket router into the main app.
         .layer(cors);
 
     // --- Server Launch ---
