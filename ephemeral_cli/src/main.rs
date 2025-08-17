@@ -2,12 +2,15 @@ use clap::{Parser, Subcommand};
 use reqwest::multipart;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
+use std::env; // To read environment variables
 use std::io::{self, Read};
 use std::path::PathBuf; // For handling file paths
 use tokio::fs; // For async file reading
 
-// The base URL for our backend API.
-const API_BASE_URL: &str = "http://127.0.0.1:3000";
+// Function to get the API base URL from an environment variable.
+fn get_api_base_url() -> String {
+    env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".to_string())
+}
 
 /// A CLI for interacting with Ephemeral Spaces.
 #[derive(Parser, Debug)]
@@ -59,13 +62,14 @@ fn extract_id_from_url(url: &str) -> Option<String> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+    let api_base_url = get_api_base_url();
 
     match cli.command {
         Commands::Create => {
             let mut sp = Spinner::new(Spinners::Dots9, "Creating a new space...".into());
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/spaces", API_BASE_URL);
+            let api_url = format!("{}/api/spaces", api_base_url);
 
             let response = client.post(&api_url).send().await;
 
@@ -111,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/spaces/{}/text", API_BASE_URL, space_id);
+            let api_url = format!("{}/api/spaces/{}/text", api_base_url, space_id);
 
             let response = client.put(&api_url).body(buffer).send().await;
 
@@ -159,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let form = multipart::Form::new().part("file", part);
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/spaces/{}/files", API_BASE_URL, space_id);
+            let api_url = format!("{}/api/spaces/{}/files", api_base_url, space_id);
 
             let response = client.post(&api_url).multipart(form).send().await;
 
@@ -193,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/spaces/{}/download", API_BASE_URL, space_id);
+            let api_url = format!("{}/api/spaces/{}/download", api_base_url, space_id);
 
             let response = client.get(&api_url).send().await;
 
