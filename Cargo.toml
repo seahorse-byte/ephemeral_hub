@@ -1,5 +1,5 @@
 [workspace]
-members = ["ephemeral_backend", "ephemeral_web"]
+members = ["ephemeral_backend", "ephemeral_cli", "ephemeral_web"]
 resolver = "2"
 
 [profile]
