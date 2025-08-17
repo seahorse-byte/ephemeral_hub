@@ -737,7 +737,7 @@ enum WsClientMsg {
 #[allow(non_snake_case)]
 fn Whiteboard(props: WhiteboardProps) -> Element {
     // A signal to hold all the paths drawn on the whiteboard
-    let mut paths = use_signal::<Vec<PathData>>(Vec::new);
+    let paths = use_signal::<Vec<PathData>>(Vec::new);
     // A signal to track the path currently being drawn by the user
     let mut current_path = use_signal::<Option<PathData>>(|| None);
     // Generate a unique ID for this user
@@ -757,15 +757,14 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                 }
             };
 
-            // Use Rc<RefCell<>> for interior mutability in a single-threaded context
-            let ws = Rc::new(RefCell::new(ws));
+            // Split into a Sink (write) and Stream (read)
+            let (mut write, mut read) = ws.split();
 
             // Spawn a reader task to handle incoming messages
             spawn({
-                let ws = ws.clone();
                 let mut paths = paths.clone();
                 async move {
-                    while let Some(Ok(GlooWsMessage::Text(text))) = ws.borrow_mut().next().await {
+                    while let Some(Ok(GlooWsMessage::Text(text))) = read.next().await {
                         if let Ok(client_msg) = serde_json::from_str::<WsClientMsg>(&text) {
                             let mut current_paths = paths.write();
                             match client_msg {
@@ -784,14 +783,10 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                 }
             });
 
+            // Outgoing messages loop
             while let Some(msg_to_send) = rx.next().await {
                 let json_msg = serde_json::to_string(&msg_to_send).unwrap();
-                if ws
-                    .borrow_mut()
-                    .send(GlooWsMessage::Text(json_msg))
-                    .await
-                    .is_err()
-                {
+                if write.send(GlooWsMessage::Text(json_msg)).await.is_err() {
                     log::error!("WebSocket connection closed. Cannot send message.");
                     break;
                 }
