@@ -2,12 +2,11 @@ use clap::{Parser, Subcommand};
 use reqwest::multipart;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
-use std::env; // To read environment variables
+use std::env;
 use std::io::{self, Read};
-use std::path::PathBuf; // For handling file paths
-use tokio::fs; // For async file reading
+use std::path::PathBuf;
+use tokio::fs;
 
-// Function to get the API base URL from an environment variable.
 fn get_api_base_url() -> String {
     env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".to_string())
 }

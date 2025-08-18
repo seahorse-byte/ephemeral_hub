@@ -1,0 +1,55 @@
+# docker-compose.yml
+# Place this file in your root 'ephemeral' directory.
+
+version: '3.8'
+
+services:
+  # Our Rust backend service
+  backend:
+    # Tells Docker Compose to build the image from the Dockerfile
+    # in the ephemeral_backend directory.
+    build:
+      context: .
+      dockerfile: ephemeral_backend/Dockerfile
+    # The name of the image to create
+    image: ephemeral-backend
+    # Restart the service automatically if it fails
+    restart: unless-stopped
+    # Map port 3000 inside the container to port 3000 on the host machine
+    ports:
+      - "3000:3000"
+    # Set the environment variables the backend needs to connect to the other services
+    environment:
+      - RUST_LOG=info
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+    # This service depends on redis and minio, so they will be started first
+    depends_on:
+      - redis
+      - minio
+
+  # The Redis database service
+  redis:
+    # Use the official Redis image from Docker Hub
+    image: redis:7-alpine
+    restart: unless-stopped
+    # This exposes the Redis port only to other containers on the network, not to the host machine.
+    expose:
+      - "6379"
+
+  # The MinIO S3-compatible storage service
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    # Set the required credentials for MinIO
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    # The command to start the MinIO server
+    command: server /data --console-address ":9001"
+    # Expose the API port (9000) and the console port (9001)
+    ports:
+      - "9000:9000"
+      - "9001:9001"
