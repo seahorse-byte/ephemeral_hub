@@ -1,6 +1,6 @@
 # ---- Builder Stage ----
 # Use the official Rust image as a build environment.
-FROM rust:1.79 AS builder
+FROM rust:latest AS builder
 
 # Set a working directory for the entire application.
 WORKDIR /usr/src/app
