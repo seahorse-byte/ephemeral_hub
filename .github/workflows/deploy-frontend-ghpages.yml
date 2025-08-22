@@ -23,10 +23,26 @@ jobs:
       - name: Add cargo bin to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+      - name: Cache cargo registry and git
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-
+
       - name: Build Dioxus web (release)
         run: |
           cd ephemeral_web
-          dx build --release --target web
+          dx build --release --platform web
 
       - name: Setup Node (for any post-build steps)
         uses: actions/setup-node@v4
