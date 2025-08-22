@@ -1,0 +1,42 @@
+name: Build & Deploy frontend to Netlify
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable) and add wasm target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Install dioxus-cli
+        run: cargo install --locked dioxus-cli
+
+      - name: Build Dioxus web (release)
+        run: |
+          cd ephemeral_web
+          dioxus build --release -t web
+
+      - name: Setup Node (for netlify-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install netlify-cli
+        run: npm install -g netlify-cli
+
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          # Deploy the compiled static site to Netlify
+          netlify deploy --dir=ephemeral_web/dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
