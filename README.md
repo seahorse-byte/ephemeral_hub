@@ -20,50 +20,58 @@ You will need the following tools installed on your system:
 Rust & Cargo: https://www.rust-lang.org/tools/install
 Docker & Docker Compose: https://www.docker.com/products/docker-desktop/
 Dioxus CLI: cargo install dioxus-cli
-````
+```
 
 #### 💻 Running Locally
 
 Running the entire application stack is managed with two commands in two separate terminals. All commands should be run from the root ephemeral/ directory.
 
 #### 🖥️ Terminal 1: Start the Backend Stack
-This single command will build the backend's Docker image and start the backend server, a Redis database, and a MinIO S3-compatible file store.
+
+```bash
+# This single command will build the backend's Docker image and start the backend server, a Redis database, and a MinIO S3-compatible file store.
 
 docker-compose up --build
 
-The backend API will be available at http://127.0.0.1:3000.
+# The backend API will be available at http://127.0.0.1:3000.
+# The MinIO web console will be available at http://127.0.0.1:9001 (user: minioadmin, pass: minioadmin).
+```
 
-The MinIO web console will be available at http://127.0.0.1:9001 (user: minioadmin, pass: minioadmin).
+### 🌐 Terminal 2: Start the Frontend
 
-🌐 Terminal 2: Start the Frontend
-This command will build and serve the Dioxus web application with hot-reloading.
+```bash
+# This command will build and serve the Dioxus web application with hot-reloading.
 
 dx serve --package ephemeral_web
 
-The frontend will be available at the URL provided by the CLI (usually http://127.0.0.1:8080).
+# The frontend will be available at the URL provided by the CLI (usually http://127.0.0.1:8080).
+```
 
-⌨️ Using the CLI
+### ⌨️ Using the CLI
+
 The ephemeral_cli provides a way to interact with spaces directly from your terminal. All commands are run from the root ephemeral/ directory.
 
-Create a Space
+```bash
+# Create a Space
 cargo run --package ephemeral_cli -- create
 
-Pipe Text to a Space
+# Pipe Text to a Space
 # First, create a space to get its API URL
 API_URL=$(cargo run --package ephemeral_cli -- create | grep "API URL" | awk '{print $3}')
 
 # Now, pipe content to it
 echo "Hello from the CLI!" | cargo run --package ephemeral_cli -- pipe $API_URL
 
-Upload a File
+# Upload a File
 # Assuming you have a file named 'test.txt'
 touch test.txt
 
 # Use the same API_URL from the create command
 cargo run --package ephemeral_cli -- upload ./test.txt $API_URL
 
-Download a Space's Content
+# Download a Space's Content
 # Use the same API_URL from the create command
 cargo run --package ephemeral_cli -- get $API_URL
 
-This will save a file named ephemeral_space_<id>.zip to your current directory.
+# This will save a file named ephemeral_space_<id>.zip to your current directory.
+```
