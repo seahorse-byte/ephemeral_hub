@@ -32,3 +32,4 @@ EXPOSE 3000
 
 # Set the command to run the application.
 CMD ["./ephemeral_backend"]
+

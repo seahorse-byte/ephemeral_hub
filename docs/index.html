@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ephemeral Spaces - Interactive Showcase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Stone, Sky, Amber) -->
+    <!-- Application Structure Plan: A feature-oriented design starting with a hero section to introduce the concept. This is followed by a tabbed, interactive showcase allowing users to "try" the Text Bin, File Drop, and Whiteboard features in a sandboxed environment. A "How It Works" section uses a simple visual diagram to explain the core ephemeral lifecycle. Finally, an interactive "fake terminal" demonstrates the CLI functionality for power users. This structure was chosen to guide the user through the product's value proposition and core features in a hands-on, engaging way, prioritizing user understanding over a literal representation of the code structure. -->
+    <!-- Visualization & Content Choices: Text Bin -> Interactive <textarea> -> User can type and simulate saving -> Demonstrates core text sharing. File Drop -> Interactive file input & JS -> User selects files, names appear in a list with a fake progress bar -> Demonstrates file sharing. Whiteboard -> <canvas> with JS drawing logic -> User can draw simple lines with color choices -> Demonstrates real-time collaboration. Lifecycle -> HTML/CSS Diagram with Unicode Icons -> Static but visual -> Explains the "ephemeral" concept. CLI -> Interactive fake terminal -> User clicks buttons to see command outputs with a typing effect -> Showcases power-user features. No Chart.js/Plotly.js are used as there is no dataset to visualize; the focus is on interactive feature demonstration. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        .tab-active { border-color: #0284c7; color: #0284c7; background-color: #f0f9ff; }
+        .tab-inactive { border-color: transparent; color: #4b5563; }
+        .terminal-cursor {
+            display: inline-block;
+            background-color: #f59e0b;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        .typewriter {
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 2s steps(40, end);
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <main class="max-w-5xl mx-auto p-4 md:p-8 space-y-16 md:space-y-24">
+
+        <!-- Hero Section -->
+        <section class="text-center py-12">
+            <h1 class="text-4xl md:text-6xl font-bold text-sky-800 mb-4">Ephemeral Spaces</h1>
+            <p class="text-lg md:text-xl text-stone-600 max-w-3xl mx-auto">
+                A temporary, no-login-required space for text, files, and collaborative brainstorming. Create a space, share the URL, and everything is automatically deleted after 24 hours.
+            </p>
+            <a href="#interactive-showcase" class="mt-8 inline-block bg-sky-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-sky-700 transition-transform transform hover:scale-105">
+                Explore the Features
+            </a>
+        </section>
+
+        <!-- Interactive Showcase Section -->
+        <section id="interactive-showcase" class="scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold">Try It Yourself</h2>
+                <p class="text-stone-600 mt-2">Click through the tabs below to experience the core features.</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg border border-stone-200">
+                <!-- Tabs -->
+                <div class="flex border-b border-stone-200">
+                    <button id="tab-text" class="flex-1 p-4 font-semibold text-sm md:text-base border-b-2 tab-active">📝 Text Bin</button>
+                    <button id="tab-files" class="flex-1 p-4 font-semibold text-sm md:text-base border-b-2 tab-inactive">📁 File Drop</button>
+                    <button id="tab-whiteboard" class="flex-1 p-4 font-semibold text-sm md:text-base border-b-2 tab-inactive">🎨 Whiteboard</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-6 md:p-8 min-h-[400px]">
+                    <!-- Text Bin Content -->
+                    <div id="content-text">
+                        <p class="text-stone-600 mb-4">A simple, private pastebin. Type or paste any text below and click "Save". In the real app, this would be instantly available to anyone with the space's URL.</p>
+                        <textarea id="text-bin-area" class="w-full h-48 p-3 font-mono text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-sky-500 transition" placeholder="Paste your text here..."></textarea>
+                        <div class="flex justify-end items-center mt-4">
+                            <span id="text-save-feedback" class="text-green-600 font-medium text-sm mr-4 opacity-0 transition-opacity">Saved!</span>
+                            <button id="text-save-btn" class="bg-sky-600 text-white font-semibold py-2 px-5 rounded-md hover:bg-sky-700 transition">Save Text</button>
+                        </div>
+                    </div>
+
+                    <!-- File Drop Content -->
+                    <div id="content-files" class="hidden">
+                        <p class="text-stone-600 mb-4">Temporarily share files with others. Click the area below to select files. After "uploading", they would be available for download to anyone with the URL.</p>
+                        <label for="file-upload-input" class="flex flex-col items-center justify-center w-full h-40 px-4 transition bg-stone-50 border-2 border-stone-300 border-dashed rounded-md cursor-pointer hover:border-sky-400 hover:bg-sky-50">
+                            <span class="text-3xl">📤</span>
+                            <span class="mt-2 text-sm text-stone-600"><span class="font-semibold text-sky-600">Click to upload</span> or drag and drop</span>
+                        </label>
+                        <input type="file" id="file-upload-input" multiple class="hidden">
+                        <div id="file-list" class="mt-4 space-y-2"></div>
+                    </div>
+
+                    <!-- Whiteboard Content -->
+                    <div id="content-whiteboard" class="hidden">
+                        <p class="text-stone-600 mb-4">A real-time collaborative whiteboard. Your drawings would appear instantly on your collaborators' screens. Try drawing below!</p>
+                        <div class="flex justify-center gap-2 mb-4">
+                            <button class="w-8 h-8 rounded-full bg-black border-2 border-sky-500" data-color="black"></button>
+                            <button class="w-8 h-8 rounded-full bg-red-500" data-color="red"></button>
+                            <button class="w-8 h-8 rounded-full bg-blue-500" data-color="blue"></button>
+                            <button class="w-8 h-8 rounded-full bg-green-500" data-color="green"></button>
+                        </div>
+                        <canvas id="whiteboard-canvas" class="w-full h-64 md:h-80 border border-stone-300 rounded-md cursor-crosshair"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- How It Works Section -->
+        <section>
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold">The Ephemeral Lifecycle</h2>
+                <p class="text-stone-600 mt-2">Your data exists only as long as you need it.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-center">
+                <div class="p-4"><span class="text-4xl">🚀</span><h3 class="font-bold mt-2">1. Create</h3><p class="text-sm text-stone-600">Instantly get a new space.</p></div>
+                <div class="flex items-center justify-center text-3xl text-stone-300 font-mono">&rarr;</div>
+                <div class="p-4"><span class="text-4xl">🔗</span><h3 class="font-bold mt-2">2. Share</h3><p class="text-sm text-stone-600">Send the unique URL to others.</p></div>
+                <div class="flex items-center justify-center text-3xl text-stone-300 font-mono">&rarr;</div>
+                <div class="p-4"><span class="text-4xl">🗑️</span><h3 class="font-bold mt-2">3. Auto-Delete</h3><p class="text-sm text-stone-600">The space and all its content are gone forever after 24 hours.</p></div>
+            </div>
+        </section>
+
+        <!-- CLI Section -->
+        <section>
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold">For Power Users</h2>
+                <p class="text-stone-600 mt-2">Interact with spaces directly from your terminal.</p>
+            </div>
+            <div class="bg-stone-800 rounded-xl shadow-lg p-4 font-mono text-sm text-white">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                    <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                    <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                </div>
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <button class="bg-sky-600/50 hover:bg-sky-600/80 px-2 py-1 rounded" data-cli="create">ephemeral create</button>
+                    <button class="bg-sky-600/50 hover:bg-sky-600/80 px-2 py-1 rounded" data-cli="pipe">cat log.txt | ephemeral pipe ...</button>
+                    <button class="bg-sky-600/50 hover:bg-sky-600/80 px-2 py-1 rounded" data-cli="upload">ephemeral upload ...</button>
+                    <button class="bg-sky-600/50 hover:bg-sky-600/80 px-2 py-1 rounded" data-cli="get">ephemeral get ...</button>
+                </div>
+                <div id="terminal-output" class="text-green-400 whitespace-pre-wrap">
+                    <span class="text-amber-400">&gt;</span> Click a command to see example output.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center p-8 text-stone-500 text-sm">
+        <p>This is an interactive showcase of the Ephemeral Spaces FOSS project.</p>
+        <p>&copy; 2025. Built with Rust, Axum, and Dioxus.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Tabbed Interface Logic ---
+            const tabs = {
+                text: document.getElementById('tab-text'),
+                files: document.getElementById('tab-files'),
+                whiteboard: document.getElementById('tab-whiteboard'),
+            };
+            const contents = {
+                text: document.getElementById('content-text'),
+                files: document.getElementById('content-files'),
+                whiteboard: document.getElementById('content-whiteboard'),
+            };
+
+            const switchTab = (activeTab) => {
+                Object.keys(tabs).forEach(key => {
+                    const is_active = key === activeTab;
+                    tabs[key].classList.toggle('tab-active', is_active);
+                    tabs[key].classList.toggle('tab-inactive', !is_active);
+                    contents[key].classList.toggle('hidden', !is_active);
+                });
+            };
+
+            Object.keys(tabs).forEach(key => {
+                tabs[key].addEventListener('click', () => switchTab(key));
+            });
+
+            // --- Text Bin Logic ---
+            const textSaveBtn = document.getElementById('text-save-btn');
+            const textSaveFeedback = document.getElementById('text-save-feedback');
+            textSaveBtn.addEventListener('click', () => {
+                textSaveFeedback.classList.remove('opacity-0');
+                setTimeout(() => {
+                    textSaveFeedback.classList.add('opacity-0');
+                }, 2000);
+            });
+
+            // --- File Drop Logic ---
+            const fileInput = document.getElementById('file-upload-input');
+            const fileList = document.getElementById('file-list');
+            fileInput.addEventListener('change', (event) => {
+                fileList.innerHTML = '';
+                const files = event.target.files;
+                if (!files) return;
+
+                for (const file of files) {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'flex items-center justify-between bg-stone-100 p-2 rounded-md text-sm';
+                    fileItem.innerHTML = `
+                        <span class="text-stone-700">${file.name}</span>
+                        <div class="w-24 bg-stone-200 rounded-full h-2.5">
+                            <div class="bg-sky-600 h-2.5 rounded-full animate-progress"></div>
+                        </div>
+                    `;
+                    fileList.appendChild(fileItem);
+                }
+            });
+
+            // --- Whiteboard Logic ---
+            const canvas = document.getElementById('whiteboard-canvas');
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+            let currentColor = 'black';
+
+            const resizeCanvas = () => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+            };
+            
+            const getMousePos = (evt) => {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: evt.clientX - rect.left,
+                    y: evt.clientY - rect.top
+                };
+            };
+
+            const startDrawing = (e) => {
+                drawing = true;
+                const pos = getMousePos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            };
+
+            const stopDrawing = () => {
+                drawing = false;
+                ctx.closePath();
+            };
+
+            const draw = (e) => {
+                if (!drawing) return;
+                const pos = getMousePos(e);
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = currentColor;
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            };
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+            canvas.addEventListener('mousemove', draw);
+            
+            document.querySelectorAll('[data-color]').forEach(button => {
+                button.addEventListener('click', () => {
+                    currentColor = button.dataset.color;
+                    document.querySelectorAll('[data-color]').forEach(btn => btn.classList.remove('border-sky-500'));
+                    button.classList.add('border-sky-500');
+                });
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // --- CLI Logic ---
+            const terminalOutput = document.getElementById('terminal-output');
+            const cliButtons = document.querySelectorAll('[data-cli]');
+            const cliOutputs = {
+                create: `
+<span class="text-green-400">✓ Space created successfully!</span>
+
+--- 🚀 New Ephemeral Space ---
+ID:         <span class="text-yellow-400">aB3d_8fG1h</span>
+API URL:    <span class="text-yellow-400">http://.../api/spaces/aB3d_8fG1h</span>
+Expires at: <span class="text-yellow-400">2025-08-23T14:30:00Z</span>
+-----------------------------
+`,
+                pipe: `
+<span class="text-green-400">✓ Text piped successfully!</span>
+`,
+                upload: `
+<span class="text-green-400">✓ File uploaded successfully!</span>
+`,
+                get: `
+<span class="text-green-400">✓ Space content saved to 'ephemeral_space_aB3d_8fG1h.zip'!</span>
+`
+            };
+
+            cliButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const command = button.dataset.cli;
+                    const outputHtml = cliOutputs[command] || 'Command not found.';
+                    terminalOutput.innerHTML = `<span class="text-amber-400">&gt;</span> <span class="typewriter">${button.textContent}</span><br>${outputHtml}`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>
