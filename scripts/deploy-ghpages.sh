@@ -56,8 +56,9 @@ else
 fi
 
 # Sync files
-echo "Syncing files to worktree..."
-rsync -av --delete "$BUILD_DIR/" "$WORKTREE_TMPDIR/"
+echo "Syncing files to worktree (preserving .git)..."
+# Exclude .git so we don't accidentally remove the worktree metadata and break cleanup
+rsync -av --delete --exclude='.git' "$BUILD_DIR/" "$WORKTREE_TMPDIR/"
 
 # Commit & push if there are changes
 cd "$WORKTREE_TMPDIR"
