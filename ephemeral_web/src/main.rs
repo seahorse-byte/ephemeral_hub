@@ -734,11 +734,6 @@ struct WhiteboardProps {
 }
 #[allow(non_snake_case)]
 fn Whiteboard(props: WhiteboardProps) -> Element {
-    // let mut paths = use_signal::<Vec<PathData>>(Vec::new);
-    // let mut current_path = use_signal::<Option<PathData>>(|| None);
-    // let user_id = use_memo(|| Uuid::new_v4().to_string());
-
-    //     // Initialize the signal with the server data.
     let mut paths = use_signal(|| props.initial_paths.clone());
     // A signal to track the path currently being drawn by the user
     let mut current_path = use_signal::<Option<PathData>>(|| None);
@@ -817,8 +812,9 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     rsx! {
         div {
-            class: "bg-white p-6 rounded-lg shadow-md border border-gray-200 col-span-1 lg:col-span-2",
-            h2 { class: "text-xl font-bold text-gray-800 mb-4", "Collaborative Whiteboard" }
+            // class: "bg-white p-6 rounded-lg shadow-md border border-gray-200 col-span-1 lg:col-span-2",
+            class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/30 transition-all duration-300 col-span-1 lg:col-span-2",
+            h2 { class: "text-xl font-bold text-white mb-4", "Collaborative Whiteboard" }
 
             svg {
                 class: "w-full h-[400px] border border-gray-300 rounded-md bg-gray-50",
