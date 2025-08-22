@@ -17,7 +17,7 @@ RUN cargo build --release --package ephemeral_backend
 
 # ---- Runner Stage ----
 # Use a minimal base image for the final container.
-FROM debian:bookworm-slim AS runner
+FROM debian:trixie-slim AS runner
 
 # Install runtime dependencies.
 RUN apt-get update && apt-get install -y libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
