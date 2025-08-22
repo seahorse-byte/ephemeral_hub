@@ -1,7 +1,7 @@
 # docker-compose.yml
 # Place this file in your root 'ephemeral' directory.
 
-version: '3.8'
+version: "3.8"
 
 services:
   # Our Rust backend service

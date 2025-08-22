@@ -181,7 +181,9 @@ pub async fn create_space(
 
     debug!("Created new space with id: {}", id);
 
-    let base_url = "http://127.0.0.1:3000";
+    // Use localhost in responses so the browser-frontends can reach the backend
+    // when running on the host machine while the server is inside Docker.
+    let base_url = "http://localhost:3000";
     let expires_at = now + Duration::hours(24);
 
     Ok((
