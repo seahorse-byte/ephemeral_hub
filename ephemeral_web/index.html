@@ -2,12 +2,18 @@
 <html lang="en">
   <head>
     <title>Ephemeral Space</title>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Include Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CUSTOM HEAD HOOK -->
   </head>
   <body class="bg-gray-50">
     <!-- The Dioxus app will be mounted here -->
     <div id="main"></div>
+    <!-- MODULE LOADER -->
+    <script type="module">
+      import init from "/pkg/ephemeral_web.js";
+      init("/pkg/ephemeral_web_bg.wasm");
+    </script>
   </body>
 </html>

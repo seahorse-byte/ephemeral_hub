@@ -1,0 +1,20 @@
+[application]
+name = "ephemeral_web"
+default_platform = "web"
+out_dir = "dist"
+asset_dir = "assets"
+
+[web.app]
+title = "Ephemeral Spaces"
+
+[web.watcher]
+watch_path = ["src", "assets"]
+
+[web.resource]
+style = ["main.css"]
+
+[web.resource.dev]
+script = []
+
+[web.proxy]
+backend = "http://localhost:8000/api"
