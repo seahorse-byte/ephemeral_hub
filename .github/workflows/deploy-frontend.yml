@@ -28,30 +28,58 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --version 0.5.1
 
-      - name: Build Dioxus web app manually
+      - name: Build Dioxus web app
         run: |
           cd ephemeral_web
-          echo "Building WASM package..."
-          cargo build --target wasm32-unknown-unknown --release
+          echo "Building Dioxus app with dx command..."
+          dx build --release --platform web
+          echo "Dioxus build completed."
 
-          echo "Creating dist directory..."
+      - name: Prepare deployment files
+        run: |
+          cd ephemeral_web
+          echo "Preparing dist directory..."
+
+          # Create dist directory
           mkdir -p dist/pkg
 
-          # Copy the built WASM files
-          cp target/wasm32-unknown-unknown/release/ephemeral_web.wasm dist/pkg/
+          # Look for the built files in the expected Dioxus locations
+          echo "Looking for built files..."
 
-          # Copy essential files
-          cp index.html dist/
-
-          # Copy assets if they exist
-          if [ -d "assets" ]; then
-            cp -r assets/* dist/ 2>/dev/null || echo "No assets to copy"
+          # Check the standard Dioxus build output location
+          DX_BUILD_DIR="target/dx/ephemeral_web/release/web/public"
+          if [ -d "$DX_BUILD_DIR" ]; then
+            echo "Found Dioxus build output, copying files..."
+            cp -r "$DX_BUILD_DIR"/* dist/
+          else
+            echo "Dioxus build directory not found at $DX_BUILD_DIR"
+            echo "Checking alternative locations..."
+            
+            # Look for pkg directory with WASM files
+            if [ -d "pkg" ]; then
+              echo "Found pkg directory, copying..."
+              cp -r pkg/* dist/pkg/
+            fi
+            
+            # Copy essential files
+            cp index.html dist/ 2>/dev/null || echo "No index.html to copy"
+            
+            # Copy assets if they exist
+            if [ -d "assets" ]; then
+              cp -r assets/* dist/ 2>/dev/null || echo "No assets to copy"
+            fi
           fi
+
+          # List what we have
+          echo "Contents of dist directory:"
+          ls -la dist/
+          echo "Contents of dist/pkg directory:"
+          ls -la dist/pkg/ 2>/dev/null || echo "No pkg directory"
 
           # Add redirects for SPA routing
           echo "/*    /index.html   200" > dist/_redirects
 
-          echo "Dist directory contents:"
+          echo "Final dist contents:"
           ls -la dist/
 
       - name: Deploy to Netlify
