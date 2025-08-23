@@ -25,8 +25,10 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Install Dioxus CLI
-        run: cargo install dioxus-cli --version 0.5.1
+      - name: Install latest Dioxus CLI
+        run: |
+          # Install the latest Dioxus CLI that supports Cargo.lock v4
+          cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --branch main
 
       - name: Build Dioxus web app
         run: |
@@ -53,13 +55,11 @@ jobs:
             cp -r "$DX_BUILD_DIR"/* dist/
           else
             echo "Dioxus build directory not found at $DX_BUILD_DIR"
-            echo "Checking alternative locations..."
+            echo "Checking for alternative locations..."
             
-            # Look for pkg directory with WASM files
-            if [ -d "pkg" ]; then
-              echo "Found pkg directory, copying..."
-              cp -r pkg/* dist/pkg/
-            fi
+            # Look for files in target directory
+            find target -name "*.wasm" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No WASM files found"
+            find target -name "*.js" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No JS files found"
             
             # Copy essential files
             cp index.html dist/ 2>/dev/null || echo "No index.html to copy"
