@@ -17,27 +17,38 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Install dioxus-cli
-        run: cargo install --locked dioxus-cli
+      - name: Deploy to Netlify (via npx)
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          # Deploy the compiled Dioxus web build to Netlify using npx to avoid
+          # global npm installs on the runner.
+          # dx outputs to: ephemeral_web/target/dx/ephemeral_web/release/web/public
+          BUILD_DIR=ephemeral_web/target/dx/ephemeral_web/release/web/public
 
-      - name: Add cargo bin to PATH
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "NETLIFY_AUTH_TOKEN is not set. Add it to repository secrets as NETLIFY_AUTH_TOKEN." >&2
+            exit 1
+          fi
+          if [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "NETLIFY_SITE_ID is not set. Add it to repository secrets as NETLIFY_SITE_ID." >&2
+            exit 1
+          fi
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Build directory not found: $BUILD_DIR" >&2
+            ls -la ephemeral_web/target/dx || true
+            exit 1
+          fi
 
-      - name: Cache cargo registry and git
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          # Show netlify-cli version (installed via npx) for debugging.
+          npx --yes netlify-cli@latest --version || true
 
-      - name: Cache cargo target
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-target-
+          # Quick check: ensure the token can see the site (helpful diagnostic).
+          npx --yes netlify-cli@latest sites:get --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" || true
+
+          # Deploy to production
+          npx --yes netlify-cli@latest deploy --dir="$BUILD_DIR" --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
 
       - name: Build Dioxus web (release)
         run: |
