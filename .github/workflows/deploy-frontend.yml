@@ -28,46 +28,30 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli --version 0.5.1
 
-      - name: Build Dioxus web app
+      - name: Build Dioxus web app manually
         run: |
           cd ephemeral_web
-          echo "Building Dioxus app..."
-          dx build --release --platform web
-          echo "Build completed."
+          echo "Building WASM package..."
+          cargo build --target wasm32-unknown-unknown --release
 
-      - name: Prepare deployment files
-        run: |
-          cd ephemeral_web
-          echo "Preparing dist directory..."
+          echo "Creating dist directory..."
+          mkdir -p dist/pkg
 
-          # Create dist directory if it doesn't exist
-          mkdir -p dist
+          # Copy the built WASM files
+          cp target/wasm32-unknown-unknown/release/ephemeral_web.wasm dist/pkg/
 
-          # Copy built files from the expected Dioxus output location
-          BUILD_SOURCE="target/dx/ephemeral_web/release/web/public"
-          if [ -d "$BUILD_SOURCE" ]; then
-            echo "Copying from Dioxus build output..."
-            cp -r "$BUILD_SOURCE"/* dist/
-          else
-            echo "Dioxus build output not found at $BUILD_SOURCE"
-            echo "Looking for alternative locations..."
-            find . -path "*/target/*/web/public" -type d | while read dir; do
-              echo "Found alternative: $dir"
-              cp -r "$dir"/* dist/
-              break
-            done
-          fi
+          # Copy essential files
+          cp index.html dist/
 
-          # Ensure we have essential files
-          if [ ! -f "dist/index.html" ]; then
-            echo "index.html not found, copying from source..."
-            cp index.html dist/ 2>/dev/null || echo "No index.html in source"
+          # Copy assets if they exist
+          if [ -d "assets" ]; then
+            cp -r assets/* dist/ 2>/dev/null || echo "No assets to copy"
           fi
 
           # Add redirects for SPA routing
           echo "/*    /index.html   200" > dist/_redirects
 
-          echo "Final dist contents:"
+          echo "Dist directory contents:"
           ls -la dist/
 
       - name: Deploy to Netlify
@@ -76,12 +60,6 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
           cd ephemeral_web
-          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
-            echo "ERROR: Dist directory is empty or missing"
-            ls -la
-            exit 1
-          fi
-
           echo "Deploying these files to Netlify:"
           ls -la dist/
 
