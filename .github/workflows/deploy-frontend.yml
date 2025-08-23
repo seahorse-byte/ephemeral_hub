@@ -10,52 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust (stable) and add wasm target
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: true
-
-      - name: Deploy to Netlify (via npx)
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: |
-          # Deploy the compiled Dioxus web build to Netlify using npx to avoid
-          # global npm installs on the runner.
-          # dx outputs to: target/dx/ephemeral_web/release/web/public (root target)
-          BUILD_DIR=target/dx/ephemeral_web/release/web/public
-
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo "NETLIFY_AUTH_TOKEN is not set. Add it to repository secrets as NETLIFY_AUTH_TOKEN." >&2
-            exit 1
-          fi
-          if [ -z "$NETLIFY_SITE_ID" ]; then
-            echo "NETLIFY_SITE_ID is not set. Add it to repository secrets as NETLIFY_SITE_ID." >&2
-            exit 1
-          fi
-          if [ ! -d "$BUILD_DIR" ]; then
-            echo "Build directory not found: $BUILD_DIR" >&2
-            ls -la target/dx || true
-            exit 1
-          fi
-
-          # Show netlify-cli version (installed via npx) for debugging.
-          npx --yes netlify-cli@latest --version || true
-
-          # Quick check: ensure the token can see the site (helpful diagnostic).
-          npx --yes netlify-cli@latest sites:get --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" || true
-
-          # Deploy to production
-          npx --yes netlify-cli@latest deploy --dir="$BUILD_DIR" --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
-
-      - name: Build Dioxus web (release)
-        run: |
-          cd ephemeral_web
-          dx build --release --platform web
-
-      - name: Setup Node (for netlify-cli)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
@@ -63,10 +18,40 @@ jobs:
       - name: Install netlify-cli
         run: npm install -g netlify-cli
 
+      - name: Install Rust (stable) and add wasm target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli
+
+      - name: Build Dioxus web (release)
+        run: |
+          cd ephemeral_web
+          dx build --release --platform web
+
+      - name: Verify build output
+        run: |
+          cd ephemeral_web
+          if [ ! -d "dist" ]; then
+            echo "Build directory not found. Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          echo "Build successful. Dist directory contents:"
+          ls -la dist
+
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          # Deploy the compiled static site to Netlify
-          netlify deploy --dir=ephemeral_web/dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
+          cd ephemeral_web
+          echo "Deploying from directory: $(pwd)"
+          echo "Deploying directory contents:"
+          ls -la dist
+
+          netlify deploy --dir=dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
