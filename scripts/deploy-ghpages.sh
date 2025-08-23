@@ -17,6 +17,16 @@ REMOTE=${REMOTE:-origin}
 echo "Build dir: $BUILD_DIR"
 [ -d "$BUILD_DIR" ] || { echo "Build folder not found: $BUILD_DIR" >&2; exit 1; }
 
+# Safety guard: ensure the build directory looks like a valid web build.
+# If index.html is missing, refuse to proceed to avoid wiping the gh-pages branch.
+if [ ! -f "$BUILD_DIR/index.html" ]; then
+  echo "Refusing to deploy: $BUILD_DIR does not contain index.html. Aborting to avoid wiping gh-pages." >&2
+  echo "If you really want to publish an empty site, set FORCE_DEPLOY=1 in the environment." >&2
+  if [ "${FORCE_DEPLOY:-0}" != "1" ]; then
+    exit 1
+  fi
+fi
+
 # Ensure repo up-to-date
 git fetch "$REMOTE"
 
@@ -59,6 +69,41 @@ fi
 echo "Syncing files to worktree (preserving .git)..."
 # Exclude .git so we don't accidentally remove the worktree metadata and break cleanup
 rsync -av --delete --exclude='.git' "$BUILD_DIR/" "$WORKTREE_TMPDIR/"
+
+# Fix deployed index.html asset paths so they are relative (avoid leading slash)
+# This converts occurrences like "/./assets/..." to "./assets/..." so the site
+# works when published under a repo subpath (e.g. https://user.github.io/repo/).
+if [ -f "$WORKTREE_TMPDIR/index.html" ]; then
+  echo "Rewriting index.html asset paths to be relative"
+  # Replace any '/./assets' with './assets'
+  perl -0777 -pe 's{/\./assets}{./assets}g' -i.bak "$WORKTREE_TMPDIR/index.html" || true
+  rm -f "$WORKTREE_TMPDIR/index.html.bak" || true
+fi
+
+# Inject a small script to normalize the pathname when hosting under a repo subpath
+# This strips the repo base (default 'ephemeral_spaces') from the path so the
+# Dioxus router sees routes like '/' or '/s/:id' instead of '/ephemeral_spaces/'.
+REPO_BASENAME=${REPO_BASENAME:-ephemeral_spaces}
+if [ -f "$WORKTREE_TMPDIR/index.html" ]; then
+  echo "Injecting repo-base normalization script into index.html (repo basename: $REPO_BASENAME)"
+  SCRIPT=$(cat <<EOF
+<script>
+  (function(){
+    try {
+      var repo = '$REPO_BASENAME';
+      if (location.pathname.indexOf('/' + repo) === 0) {
+        var newPath = location.pathname.replace('/' + repo, '') || '/';
+        history.replaceState({}, document.title, newPath + location.search + location.hash);
+      }
+    } catch(e) {}
+  })();
+</script>
+EOF
+)
+
+  # Insert the SCRIPT into the <head> so it runs before any scripts/imports
+  awk -v ins="$SCRIPT" 'BEGIN{added=0} /<head[^>]*>/ && !added {print; print ins; added=1; next} {print}' "$WORKTREE_TMPDIR/index.html" > "$WORKTREE_TMPDIR/index.html.tmp" && mv "$WORKTREE_TMPDIR/index.html.tmp" "$WORKTREE_TMPDIR/index.html"
+fi
 
 # Commit & push if there are changes
 cd "$WORKTREE_TMPDIR"
