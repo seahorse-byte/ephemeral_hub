@@ -24,8 +24,8 @@ jobs:
         run: |
           # Deploy the compiled Dioxus web build to Netlify using npx to avoid
           # global npm installs on the runner.
-          # dx outputs to: ephemeral_web/target/dx/ephemeral_web/release/web/public
-          BUILD_DIR=ephemeral_web/target/dx/ephemeral_web/release/web/public
+          # dx outputs to: target/dx/ephemeral_web/release/web/public (root target)
+          BUILD_DIR=target/dx/ephemeral_web/release/web/public
 
           if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
             echo "NETLIFY_AUTH_TOKEN is not set. Add it to repository secrets as NETLIFY_AUTH_TOKEN." >&2
@@ -37,7 +37,7 @@ jobs:
           fi
           if [ ! -d "$BUILD_DIR" ]; then
             echo "Build directory not found: $BUILD_DIR" >&2
-            ls -la ephemeral_web/target/dx || true
+            ls -la target/dx || true
             exit 1
           fi
 
