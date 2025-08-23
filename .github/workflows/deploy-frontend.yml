@@ -28,90 +28,25 @@ jobs:
       - name: Install Dioxus CLI
         run: cargo install dioxus-cli
 
-      - name: Debug directory structure before build
-        run: |
-          echo "Root directory contents:"
-          ls -la
-          echo "Ephemeral web directory contents:"
-          ls -la ephemeral_web
-
       - name: Build Dioxus web (release)
         run: |
           cd ephemeral_web
-          echo "Building Dioxus app..."
           dx build --release --platform web
-          echo "Build command completed."
 
-      - name: Debug build output
+      - name: Prepare dist directory
         run: |
           cd ephemeral_web
-          echo "Current directory contents after build:"
-          ls -la
-          echo "Checking for target directory:"
-          if [ -d "target" ]; then
-            echo "Target directory contents:"
-            ls -la target
-            echo "Checking for wasm files:"
-            find target -name "*.wasm" -type f 2>/dev/null || echo "No WASM files found"
-            find target -name "*.js" -type f 2>/dev/null || echo "No JS files found"
-          else
-            echo "No target directory found"
-          fi
-
-          # Check for the specific Dioxus build output directory
-          DX_BUILD_DIR="target/dx/ephemeral_web/release/web"
-          if [ -d "$DX_BUILD_DIR" ]; then
-            echo "Dioxus build directory found:"
-            ls -la "$DX_BUILD_DIR"
-            if [ -d "$DX_BUILD_DIR/public" ]; then
-              echo "Public directory contents:"
-              ls -la "$DX_BUILD_DIR/public"
-            fi
-          else
-            echo "Dioxus build directory not found at $DX_BUILD_DIR"
-            echo "Looking for any dx directory:"
-            find . -type d -name "dx" 2>/dev/null || echo "No dx directory found"
-          fi
-
-      - name: Create dist directory with correct structure
-        run: |
-          cd ephemeral_web
-          mkdir -p dist/pkg
-
-          # Look for the built files and copy them
-          DX_BUILD_DIR="target/dx/ephemeral_web/release/web/public"
-          if [ -d "$DX_BUILD_DIR" ]; then
-            echo "Copying files from Dioxus build directory..."
-            cp -r "$DX_BUILD_DIR"/* dist/ 2>/dev/null || echo "No files to copy from public"
-          else
-            echo "Dioxus build directory not found, looking for WASM files directly..."
-            # Try to find and copy the WASM/JS files
-            find target -name "ephemeral_web*.wasm" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No WASM files found"
-            find target -name "ephemeral_web*.js" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No JS files found"
-            cp index.html dist/ 2>/dev/null || echo "No index.html found"
-            cp -r assets/* dist/ 2>/dev/null || echo "No assets found"
-          fi
-
-          # Ensure we have the redirects file
+          # Create redirects file for SPA routing
+          mkdir -p dist
           echo "/*    /index.html   200" > dist/_redirects
-
-          echo "Final dist directory contents:"
-          ls -la dist
-          echo "Dist/pkg contents:"
-          ls -la dist/pkg
+          echo "Dist directory prepared with redirects"
 
       - name: Deploy to Netlify
-        if: success()
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
           cd ephemeral_web
-          if [ ! -d "dist" ] || [ -z "$(ls -la dist)" ]; then
-            echo "Dist directory is missing or empty. Cannot deploy."
-            ls -la
-            exit 1
-          fi
           echo "Deploying from dist directory:"
           ls -la dist
           netlify deploy --dir=dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod

@@ -11,10 +11,4 @@ title = "Ephemeral Spaces"
 watch_path = ["src", "assets"]
 
 [web.resource]
-style = ["main.css"]
-
-[web.resource.dev]
-script = []
-
-[[web.proxy]]
-backend = "http://localhost:8000/api"
+style = []
