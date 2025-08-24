@@ -5,6 +5,5 @@
 # It installs the CLI and then builds the `ephemeral_web` package.
 command = "cargo install dioxus-cli && dx build --release --platform web --package ephemeral_web"
 
-# FIX: This is the correct path to the build output for a workspace project,
 # as determined by the Dioxus CLI's default behavior.
 publish = "target/dx/ephemeral_web/release/web/public"
