@@ -1,5 +1,7 @@
 # Ephemeral Spaces
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/536b5578-79be-4846-a997-23062497dfa1/deploy-status)](https://app.netlify.com/projects/ephemeral-spaces/deploys)
+
 Ephemeral Spaces is a temporary, no-login-required space for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
 
 ## This project is a monorepo containing:
@@ -74,5 +76,3 @@ cargo run --package ephemeral_cli -- get $API_URL
 
 # This will save a file named ephemeral_space_<id>.zip to your current directory.
 ```
-
-[![Netlify Status](https://api.netlify.com/api/v1/badges/536b5578-79be-4846-a997-23062497dfa1/deploy-status)](https://app.netlify.com/projects/ephemeral-spaces/deploys)
