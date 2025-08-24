@@ -10,14 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Install netlify-cli
-        run: npm install -g netlify-cli
-
       - name: Install Rust stable and wasm target
         uses: actions-rs/toolchain@v1
         with:
@@ -25,10 +17,8 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Install latest Dioxus CLI
-        run: |
-          # Install the latest Dioxus CLI that supports Cargo.lock v4
-          cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --branch main
+      - name: Install Dioxus CLI
+        run: cargo install dioxus-cli --version 0.5.1
 
       - name: Build Dioxus web app
         run: |
@@ -37,58 +27,34 @@ jobs:
           dx build --release --platform web
           echo "Dioxus build completed."
 
-      - name: Prepare deployment files
+      - name: Verify build output exists
         run: |
           cd ephemeral_web
-          echo "Preparing dist directory..."
-
-          # Create dist directory
-          mkdir -p dist/pkg
-
-          # Look for the built files in the expected Dioxus locations
-          echo "Looking for built files..."
-
-          # Check the standard Dioxus build output location
-          DX_BUILD_DIR="target/dx/ephemeral_web/release/web/public"
-          if [ -d "$DX_BUILD_DIR" ]; then
-            echo "Found Dioxus build output, copying files..."
-            cp -r "$DX_BUILD_DIR"/* dist/
+          BUILD_DIR="target/dx/ephemeral_web/release/web/public"
+          if [ -d "$BUILD_DIR" ]; then
+            echo "Build directory found. Contents:"
+            ls -la "$BUILD_DIR"
           else
-            echo "Dioxus build directory not found at $DX_BUILD_DIR"
-            echo "Checking for alternative locations..."
-            
-            # Look for files in target directory
-            find target -name "*.wasm" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No WASM files found"
-            find target -name "*.js" -exec cp {} dist/pkg/ \; 2>/dev/null || echo "No JS files found"
-            
-            # Copy essential files
-            cp index.html dist/ 2>/dev/null || echo "No index.html to copy"
-            
-            # Copy assets if they exist
-            if [ -d "assets" ]; then
-              cp -r assets/* dist/ 2>/dev/null || echo "No assets to copy"
-            fi
+            echo "Build directory not found. Looking for it..."
+            find . -type d -name "public" | head -10
+            echo "Target directory contents:"
+            find target -type f | head -20
           fi
-
-          # List what we have
-          echo "Contents of dist directory:"
-          ls -la dist/
-          echo "Contents of dist/pkg directory:"
-          ls -la dist/pkg/ 2>/dev/null || echo "No pkg directory"
-
-          # Add redirects for SPA routing
-          echo "/*    /index.html   200" > dist/_redirects
-
-          echo "Final dist contents:"
-          ls -la dist/
 
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          cd ephemeral_web
-          echo "Deploying these files to Netlify:"
-          ls -la dist/
+          cd ephemeral_web/target/dx/ephemeral_web/release/web/public
+          echo "Deploying from directory: $(pwd)"
+          echo "Contents to deploy:"
+          ls -la
 
-          netlify deploy --dir=dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
+          # Add redirects file for SPA routing if it doesn't exist
+          if [ ! -f "_redirects" ]; then
+            echo "/*    /index.html   200" > _redirects
+            echo "Created _redirects file"
+          fi
+
+          npx netlify-cli deploy --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod

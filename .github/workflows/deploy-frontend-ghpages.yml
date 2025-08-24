@@ -47,13 +47,20 @@ jobs:
           cd ephemeral_web
           dx build --release --platform web
 
-      - name: Setup Node (for any post-build steps)
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
+          # Create redirects file for SPA routing if it doesn't exist
+          if [ ! -f "dist/_redirects" ]; then
+            echo "/*    /index.html   200" > dist/_redirects
+          fi
+
+          # Verify dist directory exists and has content
+          echo "Dist directory contents:"
+          ls -la dist/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./ephemeral_web/dist
+          # For SPA routing on GitHub Pages
+          enable_jekyll: false
+          disable_nojekyll: true
