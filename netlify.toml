@@ -1,12 +1,10 @@
 # ephemeral/netlify.toml
 
 [build]
-# This tells Netlify to run the build command from inside the 'ephemeral_web' folder.
-base = "ephemeral_web"
+# This is the command Netlify will run from the root of your repository.
+# It specifically builds the `ephemeral_web` package.
+command = "dx build --release --package ephemeral_web"
 
-# The command to build your Dioxus app for production.
-# Since the base is `ephemeral_web`, we don't need the --package flag.
-command = "dx build --release"
-
-# The output folder, relative to the `base` directory.
-publish = "dist"
+# FIX: This is the correct path to the build output for a workspace project.
+# It points directly to the final, public-ready files.
+publish = "target/dx/ephemeral_web/release/web/public"
