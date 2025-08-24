@@ -1,4 +1,4 @@
-### Deploy to Netlify (self hosting)
+# Deploy to Netlify (self hosting)
 
 ```bash
 pwd # ....<local_computer_path>/ephemeral_spaces

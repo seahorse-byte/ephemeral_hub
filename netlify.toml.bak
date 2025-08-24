@@ -1,9 +1,0 @@
-[build]
-  publish = "ephemeral_web/dist"
-  # We build in CI; this command is kept for reference or if Netlify builds instead
-  command = "bash -lc 'rustup target add wasm32-unknown-unknown && cargo install --locked dioxus-cli && (cd ephemeral_web && dx build --release --platform web)'"
-
-[dev]
-  # local netlify dev settings as reference
-  command = ""
-  port = 8888
