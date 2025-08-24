@@ -1,0 +1,3 @@
+# ephemeral/rust-toolchain.toml
+[toolchain]
+channel = "stable"
