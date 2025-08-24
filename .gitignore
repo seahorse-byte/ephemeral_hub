@@ -11,3 +11,5 @@
 !/target/dx/ephemeral_web/release
 !/target/dx/ephemeral_web/release/web
 !/target/dx/ephemeral_web/release/web/public
+# Local Netlify folder
+.netlify
