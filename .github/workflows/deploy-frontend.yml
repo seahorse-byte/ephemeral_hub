@@ -42,7 +42,8 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          cd ephemeral_web/target/dx/ephemeral_web/release/web/public
+          # Navigate to the correct build output directory (from workspace root)
+          cd target/dx/ephemeral_web/release/web/public
           echo "Deploying from directory: $(pwd)"
           echo "Contents to deploy:"
           ls -la
