@@ -61,7 +61,7 @@ The frontend needs to be fast, reliable, and provide a smooth user experience.
 
 ### 2\. User Experience (UX)
 
-  * **Loading States:** Never show a blank page. Use skeleton loaders or simple spinners while fetching initial data for a space.
+  * **Loading States:** Never show a blank page. Use skeleton loaders or simple spinners while fetching initial data for a hub.
   * **Optimistic Updates:** For the whiteboard, when a user draws a line, render it on their screen *immediately*. Simultaneously, send the data to the server. If the server confirms, do nothing. If it fails, remove the line and show an error. This makes the UI feel instantaneous.
   * **Connection Handling:** If the WebSocket connection drops, don't just fail. Implement a reconnection strategy with exponential backoff and display a "Reconnecting..." message in the UI.
 

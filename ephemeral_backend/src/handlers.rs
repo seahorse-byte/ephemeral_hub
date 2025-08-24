@@ -47,7 +47,7 @@ impl IntoResponse for AppError {
                     "Internal Server Error".to_string(),
                 )
             }
-            AppError::NotFound => (StatusCode::NOT_FOUND, "Space not found".to_string()),
+            AppError::NotFound => (StatusCode::NOT_FOUND, "Hub not found".to_string()),
             AppError::IoError(e) => {
                 tracing::error!("IO error: {:?}", e);
                 (
@@ -125,9 +125,9 @@ impl From<io::Error> for AppError {
     }
 }
 
-// Data model for a Space, stored as JSON in Redis.
+// Data model for a Hub, stored as JSON in Redis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Space {
+pub struct Hub {
     pub id: String,
     pub content: String,
     pub created_at: DateTime<Utc>,
@@ -151,7 +151,7 @@ pub struct CreateSpaceResponse {
     expires_at: String,
 }
 
-/// Handler to create a new space.
+/// Handler to create a new hub.
 pub async fn create_space(
     State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<CreateSpaceResponse>), AppError> {
@@ -160,26 +160,26 @@ pub async fn create_space(
     let id = nanoid!(10);
     let now = Utc::now();
 
-    let space = Space {
+    let hub = Hub {
         id: id.clone(),
-        content: String::from("Welcome to your ephemeral space!"),
+        content: String::from("Welcome to your ephemeral hub!"),
         created_at: now,
         files: Vec::new(),
         whiteboard: Vec::new(),
     };
 
-    let space_json = serde_json::to_string(&space).unwrap();
+    let space_json = serde_json::to_string(&hub).unwrap();
     let ttl_seconds = Duration::hours(24).num_seconds() as usize;
 
     redis::cmd("SET")
-        .arg(format!("space:{}", id))
+        .arg(format!("hub:{}", id))
         .arg(space_json)
         .arg("EX")
         .arg(ttl_seconds)
         .query_async::<()>(&mut *conn)
         .await?;
 
-    debug!("Created new space with id: {}", id);
+    debug!("Created new hub with id: {}", id);
 
     // Use localhost in responses so the browser-frontends can reach the backend
     // when running on the host machine while the server is inside Docker.
@@ -197,26 +197,26 @@ pub async fn create_space(
     ))
 }
 
-/// Handler to get the content of a space.
+/// Handler to get the content of a hub.
 pub async fn get_space(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Space>, AppError> {
+) -> Result<Json<Hub>, AppError> {
     let mut conn = state.redis.get().await?;
 
-    let key = format!("space:{}", id);
+    let key = format!("hub:{}", id);
     let space_json: Option<String> = conn.get(key).await?;
 
     match space_json {
         Some(json) => {
-            let space: Space = serde_json::from_str(&json).unwrap();
-            Ok(Json(space))
+            let hub: Hub = serde_json::from_str(&json).unwrap();
+            Ok(Json(hub))
         }
         None => Err(AppError::NotFound),
     }
 }
 
-/// Handler to update the text bin for a space.
+/// Handler to update the text bin for a hub.
 pub async fn update_text_bin(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -224,14 +224,14 @@ pub async fn update_text_bin(
 ) -> Result<StatusCode, AppError> {
     let mut conn = state.redis.get().await?;
 
-    let key = format!("space:{}", id);
+    let key = format!("hub:{}", id);
     let space_json: Option<String> = conn.get(&key).await?;
 
     if let Some(json) = space_json {
-        let mut space: Space = serde_json::from_str(&json).unwrap();
-        space.content = body;
+        let mut hub: Hub = serde_json::from_str(&json).unwrap();
+        hub.content = body;
 
-        let updated_json = serde_json::to_string(&space).unwrap();
+        let updated_json = serde_json::to_string(&hub).unwrap();
         let ttl: isize = conn.ttl(&key).await?;
 
         if ttl > 0 {
@@ -244,25 +244,25 @@ pub async fn update_text_bin(
                 .await?;
         }
 
-        debug!("Updated text for space id: {}", id);
+        debug!("Updated text for hub id: {}", id);
         Ok(StatusCode::OK)
     } else {
         Err(AppError::NotFound)
     }
 }
 
-/// Handler to upload one or more files to a space.
+/// Handler to upload one or more files to a hub.
 pub async fn upload_file(
     State(state): State<AppState>,
     Path(id): Path<String>,
     mut multipart: Multipart,
 ) -> Result<StatusCode, AppError> {
     let mut conn = state.redis.get().await?;
-    let key = format!("space:{}", id);
+    let key = format!("hub:{}", id);
 
-    // Get the space metadata from Redis first.
+    // Get the hub metadata from Redis first.
     let space_json: Option<String> = conn.get(&key).await?;
-    let mut space: Space = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
+    let mut hub: Hub = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
 
     // Iterate over each part of the multipart upload.
     while let Some(field) = multipart.next_field().await.unwrap() {
@@ -286,15 +286,15 @@ pub async fn upload_file(
             .send()
             .await?;
 
-        // Update the space metadata with the new file info.
-        space.files.push(FileInfo {
+        // Update the hub metadata with the new file info.
+        hub.files.push(FileInfo {
             filename,
             size: file_size,
         });
     }
 
-    // Save the updated space metadata back to Redis, preserving the TTL.
-    let updated_json = serde_json::to_string(&space).unwrap();
+    // Save the updated hub metadata back to Redis, preserving the TTL.
+    let updated_json = serde_json::to_string(&hub).unwrap();
     let ttl: isize = conn.ttl(&key).await?;
     if ttl > 0 {
         redis::cmd("SET")
@@ -309,17 +309,17 @@ pub async fn upload_file(
     Ok(StatusCode::OK)
 }
 
-/// Handler to download all content of a space as a single zip archive.
+/// Handler to download all content of a hub as a single zip archive.
 pub async fn download_files(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, AppError> {
     let mut conn = state.redis.get().await?;
-    let key = format!("space:{}", id);
+    let key = format!("hub:{}", id);
 
-    // Get the space metadata from Redis.
+    // Get the hub metadata from Redis.
     let space_json: Option<String> = conn.get(&key).await?;
-    let space: Space = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
+    let hub: Hub = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
 
     // Create a zip archive in an in-memory buffer.
     let mut buffer = Vec::new();
@@ -328,10 +328,10 @@ pub async fn download_files(
 
     // Add the text bin content to the zip.
     zip.start_file("ephemeral_text_bin.txt", FileOptions::<()>::default())?;
-    zip.write_all(space.content.as_bytes())?;
+    zip.write_all(hub.content.as_bytes())?;
 
     // Fetch each file from S3 and add it to the zip.
-    for file_info in space.files {
+    for file_info in hub.files {
         let s3_key = format!("{}/{}", id, file_info.filename);
         let object = state
             .s3

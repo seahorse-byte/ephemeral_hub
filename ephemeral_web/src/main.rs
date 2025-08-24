@@ -18,7 +18,7 @@ enum Route {
     #[route("/")]
     Home {},
     #[route("/s/:id")]
-    Space { id: String },
+    Hub { id: String },
 }
 
 /// The main application component that sets up the router.
@@ -59,13 +59,13 @@ fn Home() -> Element {
                         if let Ok(data) = resp.json::<CreateSpaceResponse>().await {
                             // Because this is run in a coroutine, the navigator
                             // update will be correctly processed by the scheduler.
-                            navigator.push(Route::Space { id: data.id });
+                            navigator.push(Route::Hub { id: data.id });
                         } else {
                             log::error!("Failed to deserialize response from server.");
                         }
                     }
                     Err(e) => {
-                        log::error!("Failed to create space: {}", e);
+                        log::error!("Failed to create hub: {}", e);
                     }
                 }
             }
@@ -132,9 +132,9 @@ fn Home() -> Element {
                         img {
                             src: LOGO,
                             class: "mx-auto  h-48 w-auto",
-                            alt: "Ephemeral Spaces Logo"
+                            alt: "Ephemeral Hub Logo"
                         }
-                        "Ephemeral Spaces"
+                        "Ephemeral Hub"
 
                     }
                     p {
@@ -145,7 +145,7 @@ fn Home() -> Element {
                     button {
                         class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-20",
                         onclick: move |_| { coroutine.send(()); },
-                        "Create New Space"
+                        "Create New Hub"
                     }
 
                     // Features grid
@@ -245,7 +245,7 @@ struct FileInfo {
 }
 
 #[allow(non_snake_case)]
-pub fn Space(props: SpaceProps) -> Element {
+pub fn Hub(props: SpaceProps) -> Element {
     let id = props.id.clone();
 
     let space_resource = use_resource(move || {
@@ -265,14 +265,14 @@ pub fn Space(props: SpaceProps) -> Element {
 
     // Coroutine to handle the download process
     let download_coroutine = use_coroutine({
-        let space_id = props.id.clone();
+        let hub_id = props.id.clone();
         move |mut rx: UnboundedReceiver<()>| {
-            // FIX: Clone the space_id here, outside the async move block.
-            let space_id = space_id.clone();
+            // FIX: Clone the hub_id here, outside the async move block.
+            let hub_id = hub_id.clone();
             async move {
                 while rx.next().await.is_some() {
                     let api_url =
-                        format!("https://ephemeral-hub.com/api/spaces/{}/download", space_id);
+                        format!("https://ephemeral-hub.com/api/spaces/{}/download", hub_id);
                     let client = reqwest::Client::new();
                     match client.get(&api_url).send().await {
                         Ok(response) => {
@@ -293,7 +293,7 @@ pub fn Space(props: SpaceProps) -> Element {
                                 a.set_attribute("href", &url).unwrap();
                                 a.set_attribute(
                                     "download",
-                                    &format!("ephemeral_space_{}.zip", space_id),
+                                    &format!("ephemeral_space_{}.zip", hub_id),
                                 )
                                 .unwrap();
                                 a.dispatch_event(&web_sys::MouseEvent::new("click").unwrap())
@@ -340,7 +340,7 @@ pub fn Space(props: SpaceProps) -> Element {
         }
     });
 
-    // Network connection lines for Space page
+    // Network connection lines for Hub page
     let network_lines = rsx! {
         svg {
             xmlns: "http://www.w3.org/2000/svg",
@@ -392,12 +392,12 @@ pub fn Space(props: SpaceProps) -> Element {
 
                 div {
                     class: "flex flex-row max-w-4xl",
-                    // Header with space ID and navigation
+                    // Header with hub ID and navigation
                     div { class: "w-full max-w-4xl mb-8 flex flex-col md:flex-row",
                     div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 text-center",
                         h1 {
                             class: "text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-white via-blue-400 to-cyan-400 bg-clip-text text-transparent",
-                            "Space: {props.id}"
+                            "Hub: {props.id}"
                         }
 
                         Link {
@@ -425,13 +425,13 @@ pub fn Space(props: SpaceProps) -> Element {
                         match inner {
                             Some(data) => rsx! {
                                 div { class: "grid gap-8 md:grid-cols-1 lg:grid-cols-2",
-                                    TextBin { data: data.clone(), space_id: props.id.clone() }
+                                    TextBin { data: data.clone(), hub_id: props.id.clone() }
                                     FileDrop {
-                                        space_id: props.id.clone(),
+                                        hub_id: props.id.clone(),
                                         files: data.files.clone(),
                                         space_resource: space_resource.clone()
                                     }
-                                    Whiteboard { space_id: props.id.clone(), initial_paths: data.whiteboard.clone() }
+                                    Whiteboard { hub_id: props.id.clone(), initial_paths: data.whiteboard.clone() }
                                 }
                             },
                             None => rsx! {
@@ -448,14 +448,14 @@ pub fn Space(props: SpaceProps) -> Element {
                                             d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
                                         }
                                     }
-                                    p { class: "text-red-300 text-xl", "Failed to load space data" }
+                                    p { class: "text-red-300 text-xl", "Failed to load hub data" }
                                 }
                             }
                         }
                     } else {
                         div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center",
                             div { class: "animate-spin w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full mx-auto mb-4" }
-                            p { class: "text-slate-300 text-xl animate-pulse", "Loading space..." }
+                            p { class: "text-slate-300 text-xl animate-pulse", "Loading hub..." }
                         }
                     }
                 }
@@ -498,7 +498,7 @@ pub fn Space(props: SpaceProps) -> Element {
 #[derive(PartialEq, Props, Clone)]
 struct TextBinProps {
     data: SpaceData,
-    space_id: String,
+    hub_id: String,
 }
 
 #[allow(non_snake_case)]
@@ -506,13 +506,13 @@ fn TextBin(props: TextBinProps) -> Element {
     let mut text_content = use_signal(|| props.data.content.clone());
     let mut save_button_state = use_signal(|| "Save".to_string());
 
-    let space_id = props.space_id.clone();
+    let hub_id = props.hub_id.clone();
 
     let save_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<String>| {
-        let space_id = space_id.clone();
+        let hub_id = hub_id.clone();
         async move {
             while let Some(content) = rx.next().await {
-                let api_url = format!("https://ephemeral-hub.com/api/spaces/{}/text", space_id);
+                let api_url = format!("https://ephemeral-hub.com/api/spaces/{}/text", hub_id);
                 let client = reqwest::Client::new();
                 let res = client.put(api_url).body(content).send().await;
 
@@ -589,7 +589,7 @@ fn TextBin(props: TextBinProps) -> Element {
 /// A sub-component for the File Drop UI.
 #[derive(PartialEq, Props, Clone)]
 struct FileDropProps {
-    space_id: String,
+    hub_id: String,
     files: Vec<FileInfo>,
     space_resource: Resource<Option<SpaceData>>,
 }
@@ -601,7 +601,7 @@ fn FileDrop(props: FileDropProps) -> Element {
     // The coroutine now expects a Vec containing the filename and its bytes.
     let upload_coroutine: Coroutine<Vec<(String, Vec<u8>)>> =
         use_coroutine(move |mut rx: UnboundedReceiver<Vec<(String, Vec<u8>)>>| {
-            let space_id = props.space_id.clone();
+            let hub_id = props.hub_id.clone();
             let mut space_resource = props.space_resource.clone();
             let mut is_uploading = is_uploading.clone();
             async move {
@@ -614,8 +614,7 @@ fn FileDrop(props: FileDropProps) -> Element {
                     }
 
                     let client = reqwest::Client::new();
-                    let api_url =
-                        format!("https://ephemeral-hub.com/api/spaces/{}/files", space_id);
+                    let api_url = format!("https://ephemeral-hub.com/api/spaces/{}/files", hub_id);
 
                     let res = client.post(api_url).multipart(form).send().await;
 
@@ -731,7 +730,7 @@ enum WsMessage {
 
 #[derive(PartialEq, Props, Clone)]
 struct WhiteboardProps {
-    space_id: String,
+    hub_id: String,
     initial_paths: Vec<PathData>,
 }
 #[allow(non_snake_case)]
@@ -761,7 +760,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsMessage>| {
         let paths = paths.clone();
-        let ws_url = format!("ws://ephemeral-hub.com/ws/spaces/{}", props.space_id);
+        let ws_url = format!("ws://ephemeral-hub.com/ws/spaces/{}", props.hub_id);
 
         async move {
             let ws = match WebSocket::open(&ws_url) {

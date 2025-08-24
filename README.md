@@ -1,8 +1,8 @@
-# Ephemeral Spaces
+# Ephemeral Hub
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/536b5578-79be-4846-a997-23062497dfa1/deploy-status)](https://app.netlify.com/projects/ephemeral-spaces/deploys)
 
-Ephemeral Spaces is a temporary, no-login-required space for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
+Ephemeral Hub is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
 
 ## This project is a monorepo containing:
 
@@ -53,11 +53,11 @@ dx serve --package ephemeral_web
 The ephemeral_cli provides a way to interact with spaces directly from your terminal. All commands are run from the root ephemeral/ directory.
 
 ```bash
-# Create a Space
+# Create a Hub
 cargo run --package ephemeral_cli -- create
 
-# Pipe Text to a Space
-# First, create a space to get its API URL
+# Pipe Text to a Hub
+# First, create a hub to get its API URL
 API_URL=$(cargo run --package ephemeral_cli -- create | grep "API URL" | awk '{print $3}')
 
 # Now, pipe content to it
@@ -70,7 +70,7 @@ touch test.txt
 # Use the same API_URL from the create command
 cargo run --package ephemeral_cli -- upload ./test.txt $API_URL
 
-# Download a Space's Content
+# Download a Hub's Content
 # Use the same API_URL from the create command
 cargo run --package ephemeral_cli -- get $API_URL
 
