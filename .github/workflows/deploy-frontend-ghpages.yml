@@ -47,20 +47,20 @@ jobs:
           cd ephemeral_web
           dx build --release --platform web
 
-          # Create redirects file for SPA routing if it doesn't exist
-          if [ ! -f "dist/_redirects" ]; then
-            echo "/*    /index.html   200" > dist/_redirects
+          # Create 404.html for SPA routing on GitHub Pages
+          BUILD_DIR="target/dx/ephemeral_web/release/web/public"
+          if [ -f "$BUILD_DIR/index.html" ]; then
+            cp "$BUILD_DIR/index.html" "$BUILD_DIR/404.html"
+            echo "Created 404.html for SPA routing"
           fi
 
-          # Verify dist directory exists and has content
-          echo "Dist directory contents:"
-          ls -la dist/
+          # Verify build directory exists and has content
+          echo "Build directory contents:"
+          ls -la "$BUILD_DIR/"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./ephemeral_web/dist
-          # For SPA routing on GitHub Pages
+          publish_dir: ./ephemeral_web/target/dx/ephemeral_web/release/web/public
           enable_jekyll: false
-          disable_nojekyll: true
