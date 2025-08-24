@@ -25,38 +25,32 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
+      - name: Install latest Dioxus CLI from main branch
+        run: |
+          # Install the latest Dioxus CLI that supports Cargo.lock v4
+          cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --branch main
 
-      - name: Build WASM package
+      - name: Build Dioxus web app
         run: |
           cd ephemeral_web
-          echo "Building WASM package with wasm-pack..."
-          wasm-pack build --target web --release
-          echo "WASM build completed."
-
-      - name: Prepare deployment files
-        run: |
-          cd ephemeral_web
-          mkdir -p dist/pkg
-
-          # Copy the built files
-          cp pkg/* dist/pkg/
-          cp index.html dist/
-
-          # Add redirects for SPA routing
-          echo "/*    /index.html   200" > dist/_redirects
-
-          echo "Final dist contents:"
-          ls -la dist/
+          echo "Building Dioxus app with dx command..."
+          dx build --release --platform web
+          echo "Dioxus build completed."
 
       - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          cd ephemeral_web
-          echo "Deploying these files to Netlify:"
-          ls -la dist/
+          cd ephemeral_web/target/dx/ephemeral_web/release/web/public
+          echo "Deploying from directory: $(pwd)"
+          echo "Contents to deploy:"
+          ls -la
 
-          netlify deploy --dir=dist --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod
+          # Add redirects file for SPA routing if it doesn't exist
+          if [ ! -f "_redirects" ]; then
+            echo "/*    /index.html   200" > _redirects
+            echo "Created _redirects file"
+          fi
+
+          npx netlify-cli deploy --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID" --prod

@@ -56,7 +56,12 @@ jobs:
 
           # Verify build directory exists and has content
           echo "Build directory contents:"
-          ls -la "$BUILD_DIR/"
+          if [ -d "$BUILD_DIR" ]; then
+            ls -la "$BUILD_DIR/"
+          else
+            echo "Build directory not found at $BUILD_DIR"
+            find . -type d -name "public" | head -5
+          fi
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
