@@ -1,0 +1,8 @@
+# ephemeral_web/Dioxus.toml
+
+[application]
+name = "ephemeral_web"
+
+[web.app]
+# This sets the base path for your compiled assets.
+public_path = "/pkg/"

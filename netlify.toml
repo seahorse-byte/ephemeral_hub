@@ -2,9 +2,9 @@
 
 [build]
 # This is the command Netlify will run from the root of your repository.
-# It specifically builds the `ephemeral_web` package.
-command = "cargo install dioxus-cli && cd ephemeral_web && dx build --release --platform web"
+# It installs the CLI and then builds the `ephemeral_web` package.
+# The `--out dist` flag explicitly tells Dioxus to put the final website in a folder named "dist".
+command = "cargo install dioxus-cli && dx build --release --package ephemeral_web --out dist"
 
-# FIX: This is the correct path to the build output for a workspace project.
-# It points directly to the final, public-ready files.
-publish = "target/dx/ephemeral_web/release/web/public"
+# This is the directory that Netlify will deploy.
+publish = "dist"
