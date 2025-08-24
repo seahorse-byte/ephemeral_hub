@@ -1,6 +1,6 @@
 # Ephemeral Hub
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/536b5578-79be-4846-a997-23062497dfa1/deploy-status)](https://app.netlify.com/projects/ephemeral-spaces/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/ed0b5f52-0792-4dc4-b33b-780bc3d1f1a1/deploy-status)](https://app.netlify.com/projects/ephemeral-hub/deploys)
 
 Ephemeral Hub is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
 
