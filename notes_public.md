@@ -1,12 +1,12 @@
 # Deploy to Netlify (self hosting)
 
 ```bash
-cd ephemeral_web
-dx build --release --platform web
+pwd # ....<local_computer_path>/ephemeral_spaces
 ```
 
 ```bash
-pwd # ....<local_computer_path>/ephemeral_spaces
+cd ephemeral_web
+dx build --release --platform web
 ```
 
 ```bash
