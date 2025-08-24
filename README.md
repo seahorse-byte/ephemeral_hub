@@ -8,7 +8,6 @@ Ephemeral Spaces is a temporary, no-login-required space for text, files, and co
 - ephemeral_web: A Dioxus-based frontend application compiled to WebAssembly.
 - ephemeral_cli: A command-line interface for power users to interact with spaces.
 
-
 ### 🚀 Getting Started
 
 These instructions will get a copy of the project up and running on your local machine for development and testing purposes.
@@ -75,3 +74,5 @@ cargo run --package ephemeral_cli -- get $API_URL
 
 # This will save a file named ephemeral_space_<id>.zip to your current directory.
 ```
+
+[![Netlify Status](https://api.netlify.com/api/v1/badges/536b5578-79be-4846-a997-23062497dfa1/deploy-status)](https://app.netlify.com/projects/ephemeral-spaces/deploys)
