@@ -1,6 +1,15 @@
+# Ignore the entire target directory at the root of the project
 /target
-target/dx/
+
+# --- Netlify Deployment Exception ---
+# Un-ignore the specific pre-built folder needed by Netlify.
+# The '!' creates an exception to the '/target' rule above.
+# We must un-ignore each parent directory in the path.
+!/target/dx
+!/target/dx/ephemeral_web
+!/target/dx/ephemeral_web/release
+!/target/dx/ephemeral_web/release/web
+!/target/dx/ephemeral_web/release/web/public
 
 # Local Netlify folder
-.netlify
 notes.md
