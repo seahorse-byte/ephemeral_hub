@@ -1,0 +1,12 @@
+# ephemeral/netlify.toml
+
+[build]
+# This tells Netlify to run the build command from inside the 'ephemeral_web' folder.
+base = "ephemeral_web"
+
+# The command to build your Dioxus app for production.
+# Since the base is `ephemeral_web`, we don't need the --package flag.
+command = "dx build --release"
+
+# The output folder, relative to the `base` directory.
+publish = "dist"
