@@ -44,7 +44,7 @@ fn Home() -> Element {
         async move {
             // Wait for a message from the `onclick` handler.
             while rx.next().await.is_some() {
-                let api_url = "http://localhost:3000/api/spaces";
+                let api_url = "http://35.88.67.149/api/spaces";
 
                 #[derive(Deserialize, Debug)]
                 struct CreateSpaceResponse {
@@ -251,7 +251,7 @@ pub fn Space(props: SpaceProps) -> Element {
     let space_resource = use_resource(move || {
         let id = id.clone();
         async move {
-            let api_url = format!("http://localhost:3000/api/spaces/{}", id);
+            let api_url = format!("http://35.88.67.149/api/spaces/{}", id);
             reqwest::get(&api_url)
                 .await
                 .ok()?
@@ -271,7 +271,7 @@ pub fn Space(props: SpaceProps) -> Element {
             let space_id = space_id.clone();
             async move {
                 while rx.next().await.is_some() {
-                    let api_url = format!("http://localhost:3000/api/spaces/{}/download", space_id);
+                    let api_url = format!("http://35.88.67.149/api/spaces/{}/download", space_id);
                     let client = reqwest::Client::new();
                     match client.get(&api_url).send().await {
                         Ok(response) => {
@@ -511,7 +511,7 @@ fn TextBin(props: TextBinProps) -> Element {
         let space_id = space_id.clone();
         async move {
             while let Some(content) = rx.next().await {
-                let api_url = format!("http://localhost:3000/api/spaces/{}/text", space_id);
+                let api_url = format!("http://35.88.67.149/api/spaces/{}/text", space_id);
                 let client = reqwest::Client::new();
                 let res = client.put(api_url).body(content).send().await;
 
@@ -613,7 +613,7 @@ fn FileDrop(props: FileDropProps) -> Element {
                     }
 
                     let client = reqwest::Client::new();
-                    let api_url = format!("http://localhost:3000/api/spaces/{}/files", space_id);
+                    let api_url = format!("http://35.88.67.149/api/spaces/{}/files", space_id);
 
                     let res = client.post(api_url).multipart(form).send().await;
 
@@ -759,7 +759,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsMessage>| {
         let paths = paths.clone();
-        let ws_url = format!("ws://localhost:3000/ws/spaces/{}", props.space_id);
+        let ws_url = format!("ws://35.88.67.149/ws/spaces/{}", props.space_id);
 
         async move {
             let ws = match WebSocket::open(&ws_url) {
