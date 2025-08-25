@@ -1,20 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Ephemeral Hub</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Include Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
   </head>
   <body class="bg-gray-50">
-    <!-- The Dioxus app will be mounted here -->
     <div id="main"></div>
-    <!-- MODULE LOADER -->
-    <script type="module">
-      import init from "/pkg/ephemeral_web.js";
-      init("/pkg/ephemeral_web_bg.wasm");
-    </script>
   </body>
 </html>

@@ -1,8 +1,43 @@
-# ephemeral_web/Dioxus.toml
-
 [application]
+
+# App (Project) Name
 name = "ephemeral_web"
 
+# Dioxus App Default Platform
+# desktop, web, mobile, ssr
+default_platform = "web"
+
+# `build` & `serve` dist path
+out_dir = "dist"
+
+# resource (public) file folder
+asset_dir = "public"
+
 [web.app]
-# This sets the base path for your compiled assets.
-public_path = "/pkg/"
+
+# HTML title tag content
+title = "Ephemeral Hub"
+
+[web.watcher]
+
+# when watcher trigger, regenerate the `index.html`
+reload_html = true
+
+# which files or dirs will be watcher monitoring
+watch_path = ["src", "public"]
+
+# uncomment line below if using Router
+# index_on_404 = true
+
+# include `assets` in web platform
+[web.dev]
+
+
+# This section is for the proxy we set up earlier.
+proxy = [
+    { backend = "http://127.0.0.1:3000/api/", proxy = "/api/" },
+    { backend = "ws://127.0.0.1:3000/ws/", proxy = "/ws/" },
+]
+
+
+# dx clean && dx build --release --platform web && dx serve --open
