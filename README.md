@@ -1,10 +1,14 @@
-# Ephemeral Hub
+
+<center>
+  <img src="ephemeral_web/assets/logo.png" alt="ephemeral hub" width="200"/>
+</center >
+<h1 align="center"> Ephemeral Hub</h1>
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/ed0b5f52-0792-4dc4-b33b-780bc3d1f1a1/deploy-status)](https://app.netlify.com/projects/ephemeral-hub/deploys)
 
-Ephemeral Hub is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
+**Ephemeral Hub** is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
 
-## This project is a monorepo containing:
+## This project is a monorepo containing
 
 - ephemeral_backend: An Axum-based Rust server that manages spaces, files, and WebSocket connections.
 - ephemeral_web: A Dioxus-based frontend application compiled to WebAssembly.
@@ -14,8 +18,7 @@ Ephemeral Hub is a temporary, no-login-required hub for text, files, and collabo
 
 These instructions will get a copy of the project up and running on your local machine for development and testing purposes.
 
-Prerequisites
-You will need the following tools installed on your system:
+**Prerequisites**: You will need the following tools installed on your system:
 
 ```bash
 Rust & Cargo: https://www.rust-lang.org/tools/install
@@ -43,36 +46,7 @@ docker-compose up --build
 ```bash
 # This command will build and serve the Dioxus web application with hot-reloading.
 
-dx serve --package ephemeral_web
+dx serve --package ephemeral_web --open
 
 # The frontend will be available at the URL provided by the CLI (usually http://127.0.0.1:8080).
-```
-
-### ⌨️ Using the CLI
-
-The ephemeral_cli provides a way to interact with spaces directly from your terminal. All commands are run from the root ephemeral/ directory.
-
-```bash
-# Create a Hub
-cargo run --package ephemeral_cli -- create
-
-# Pipe Text to a Hub
-# First, create a hub to get its API URL
-API_URL=$(cargo run --package ephemeral_cli -- create | grep "API URL" | awk '{print $3}')
-
-# Now, pipe content to it
-echo "Hello from the CLI!" | cargo run --package ephemeral_cli -- pipe $API_URL
-
-# Upload a File
-# Assuming you have a file named 'test.txt'
-touch test.txt
-
-# Use the same API_URL from the create command
-cargo run --package ephemeral_cli -- upload ./test.txt $API_URL
-
-# Download a Hub's Content
-# Use the same API_URL from the create command
-cargo run --package ephemeral_cli -- get $API_URL
-
-# This will save a file named ephemeral_space_<id>.zip to your current directory.
 ```

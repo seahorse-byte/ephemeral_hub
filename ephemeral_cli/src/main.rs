@@ -7,10 +7,6 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 use tokio::fs;
 
-// fn get_api_base_url() -> String {
-//     env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".to_string())
-// }
-
 fn get_api_base_url() -> String {
     env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://ephemeral-hub.com".to_string())
 }
