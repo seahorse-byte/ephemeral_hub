@@ -124,26 +124,25 @@ fn Home() -> Element {
             {network_lines}
             {floating_shapes}
 
-            div { class: "relative z-10 flex min-h-screen px-4",
+            div { class: "relative z-10 flex min-h-screen",
                 div { class: "text-center max-w-auto mx-auto",
-
+                    img {
+                        src: LOGO,
+                        class: "mx-auto  h-40 w-auto",
+                        alt: "Ephemeral Hub Logo"
+                    }
                     h1 {
-                        class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent md:flex md:flex-row items-center",
-                        img {
-                            src: LOGO,
-                            class: "mx-auto  h-48 w-auto",
-                            alt: "Ephemeral Hub Logo"
-                        }
+                        class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent",
                         "Ephemeral Hub"
 
                     }
                     p {
-                        class: "text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed",
+                        class: "text-xl md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed",
                         "Share text and files instantly with a temporary, shareable URL."
                     }
 
                     button {
-                        class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-20",
+                        class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-3xl px-14 py-10 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-48",
                         onclick: move |_| { coroutine.send(()); },
                         "Create New Hub"
                     }
@@ -152,7 +151,7 @@ fn Home() -> Element {
                     div { class: "grid md:grid-cols-3 gap-8 max-w-5xl mx-auto",
 
                         // Feature 1: Instant Sharing
-                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
                                 svg {
                                     class: "w-6 h-6 text-blue-400",
@@ -172,7 +171,7 @@ fn Home() -> Element {
                         }
 
                         // Feature 2: Temporary & Secure
-                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
                                 svg {
                                     class: "w-6 h-6 text-orange-400",
@@ -192,7 +191,7 @@ fn Home() -> Element {
                         }
 
                         // Feature 3: Text & Files
-                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
                                 svg {
                                     class: "w-6 h-6 text-blue-400",
@@ -211,13 +210,130 @@ fn Home() -> Element {
                             p { class: "text-slate-300", "Support for both text content and file uploads." }
                         }
                     }
+                    CliSection {}
                 }
+                div {}
             }
 
             div { class: "absolute inset-0 opacity-10 pointer-events-none",
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-blue-400/30" }
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-orange-400/20" }
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border border-blue-400/20" }
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
+enum CliTab {
+    Create,
+    Pipe,
+    Upload,
+    Get,
+}
+
+#[allow(non_snake_case)]
+fn CliSection() -> Element {
+    let mut active_tab = use_signal(|| CliTab::Create);
+
+    let tab_class = "px-4 py-2 rounded-t-lg transition-colors duration-200";
+    let active_class = "bg-slate-700 text-orange-400";
+    let inactive_class = "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50";
+
+    let create_class = if active_tab() == CliTab::Create {
+        active_class
+    } else {
+        inactive_class
+    };
+    let pipe_class = if active_tab() == CliTab::Pipe {
+        active_class
+    } else {
+        inactive_class
+    };
+    let upload_class = if active_tab() == CliTab::Upload {
+        active_class
+    } else {
+        inactive_class
+    };
+    let get_class = if active_tab() == CliTab::Get {
+        active_class
+    } else {
+        inactive_class
+    };
+
+    rsx! {
+        div { class: "relative z-10 w-full max-w-4xl mx-auto mt-20 mb-10 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+            div { class: "text-center mb-8",
+                h2 { class: "text-4xl font-bold text-white", "For Power Users" }
+                p { class: "text-lg text-slate-300 mt-2", "Interact with spaces directly from your terminal." }
+            }
+
+            div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg",
+                // Tabs
+                div { class: "flex border-b border-slate-700",
+                    // FIX: Determine the class string before using it in the macro.
+                    button {
+                        class: "{tab_class} {create_class}",
+                        onclick: move |_| active_tab.set(CliTab::Create),
+                        "create"
+                    }
+                    button {
+                        class: "{tab_class} {pipe_class}",
+                        onclick: move |_| active_tab.set(CliTab::Pipe),
+                        "pipe"
+                    }
+                    button {
+                        class: "{tab_class} {upload_class}",
+                        onclick: move |_| active_tab.set(CliTab::Upload),
+                        "upload"
+                    }
+                    button {
+                        class: "{tab_class} {get_class}",
+                        onclick: move |_| active_tab.set(CliTab::Get),
+                        "get"
+                    }
+                }
+
+
+
+
+                // Content
+                div { class: "p-6 font-mono text-sm text-slate-200 bg-slate-700 rounded-b-xl",
+                    match active_tab() {
+                        CliTab::Create => rsx! {
+                            p { class: "mb-2 text-slate-400", "# Instantly generates a new space." }
+                            p { "$ ", span { class: "text-cyan-400", "ephemeral create" } }
+                        },
+                        CliTab::Pipe => rsx! {
+                            p { class: "mb-2 text-slate-400", "# Reads text from standard input and sends it to a space." }
+                            p { "$ ", span { class: "text-cyan-400", "cat log.txt | ephemeral pipe <API_URL>" } }
+                        },
+                        CliTab::Upload => rsx! {
+                            p { class: "mb-2 text-slate-400", "# Uploads a local file to a space." }
+                            p { "$ ", span { class: "text-cyan-400", "ephemeral upload ./archive.zip <API_URL>" } }
+                        },
+                        CliTab::Get => rsx! {
+                            p { class: "mb-2 text-slate-400", "# Downloads all content from a space as a .zip archive." }
+                            p { "$ ", span { class: "text-cyan-400", "ephemeral get <API_URL>" } }
+                        },
+                    }
+                }
+            }
+
+            // Links to crates.io and GitHub
+            div { class: "mt-6 flex justify-center gap-6",
+                a {
+                    href: "https://crates.io/crates/ephemeral_hub",
+                    target: "_blank",
+                    class: "text-slate-300 hover:text-orange-400 transition-colors duration-200",
+                    "Install via crates.io"
+                }
+                a {
+                    href: "https://github.com/seahorse-byte/ephemeral_hub/tags",
+                    target: "_blank",
+                    class: "text-slate-300 hover:text-orange-400 transition-colors duration-200",
+                    "Download from GitHub Releases"
+                }
             }
         }
     }
