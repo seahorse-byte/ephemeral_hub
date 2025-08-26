@@ -142,9 +142,9 @@ pub struct FileInfo {
     pub size: u64,
 }
 
-// The response structure for the create_space handler.
+// The response structure for the create_hub handler.
 #[derive(Serialize)]
-pub struct CreateSpaceResponse {
+pub struct CreateHubResponse {
     id: String,
     url: String,
     text_url: String,
@@ -152,9 +152,9 @@ pub struct CreateSpaceResponse {
 }
 
 /// Handler to create a new hub.
-pub async fn create_space(
+pub async fn create_hub(
     State(state): State<AppState>,
-) -> Result<(StatusCode, Json<CreateSpaceResponse>), AppError> {
+) -> Result<(StatusCode, Json<CreateHubResponse>), AppError> {
     let mut conn = state.redis.get().await?;
 
     let id = nanoid!(10);
@@ -168,12 +168,12 @@ pub async fn create_space(
         whiteboard: Vec::new(),
     };
 
-    let space_json = serde_json::to_string(&hub).unwrap();
+    let hub_json = serde_json::to_string(&hub).unwrap();
     let ttl_seconds = Duration::hours(24).num_seconds() as usize;
 
     redis::cmd("SET")
         .arg(format!("hub:{}", id))
-        .arg(space_json)
+        .arg(hub_json)
         .arg("EX")
         .arg(ttl_seconds)
         .query_async::<()>(&mut *conn)
@@ -188,26 +188,26 @@ pub async fn create_space(
 
     Ok((
         StatusCode::CREATED,
-        Json(CreateSpaceResponse {
+        Json(CreateHubResponse {
             id: id.clone(),
-            url: format!("{}/api/spaces/{}", base_url, id),
-            text_url: format!("{}/api/spaces/{}/text", base_url, id),
+            url: format!("{}/api/hubs/{}", base_url, id),
+            text_url: format!("{}/api/hubs/{}/text", base_url, id),
             expires_at: expires_at.to_rfc3339(),
         }),
     ))
 }
 
 /// Handler to get the content of a hub.
-pub async fn get_space(
+pub async fn get_hub(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<Hub>, AppError> {
     let mut conn = state.redis.get().await?;
 
     let key = format!("hub:{}", id);
-    let space_json: Option<String> = conn.get(key).await?;
+    let hub_json: Option<String> = conn.get(key).await?;
 
-    match space_json {
+    match hub_json {
         Some(json) => {
             let hub: Hub = serde_json::from_str(&json).unwrap();
             Ok(Json(hub))
@@ -225,9 +225,9 @@ pub async fn update_text_bin(
     let mut conn = state.redis.get().await?;
 
     let key = format!("hub:{}", id);
-    let space_json: Option<String> = conn.get(&key).await?;
+    let hub_json: Option<String> = conn.get(&key).await?;
 
-    if let Some(json) = space_json {
+    if let Some(json) = hub_json {
         let mut hub: Hub = serde_json::from_str(&json).unwrap();
         hub.content = body;
 
@@ -261,8 +261,8 @@ pub async fn upload_file(
     let key = format!("hub:{}", id);
 
     // Get the hub metadata from Redis first.
-    let space_json: Option<String> = conn.get(&key).await?;
-    let mut hub: Hub = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
+    let hub_json: Option<String> = conn.get(&key).await?;
+    let mut hub: Hub = serde_json::from_str(&hub_json.ok_or(AppError::NotFound)?).unwrap();
 
     // Iterate over each part of the multipart upload.
     while let Some(field) = multipart.next_field().await.unwrap() {
@@ -318,8 +318,8 @@ pub async fn download_files(
     let key = format!("hub:{}", id);
 
     // Get the hub metadata from Redis.
-    let space_json: Option<String> = conn.get(&key).await?;
-    let hub: Hub = serde_json::from_str(&space_json.ok_or(AppError::NotFound)?).unwrap();
+    let hub_json: Option<String> = conn.get(&key).await?;
+    let hub: Hub = serde_json::from_str(&hub_json.ok_or(AppError::NotFound)?).unwrap();
 
     // Create a zip archive in an in-memory buffer.
     let mut buffer = Vec::new();
@@ -350,7 +350,7 @@ pub async fn download_files(
 
     // Manually build the HTTP response with the correct headers and body.
     let body = Body::from(buffer);
-    let filename = format!("ephemeral_space_{}.zip", id);
+    let filename = format!("ephemeral_hub_{}.zip", id);
 
     let response = Response::builder()
         .status(StatusCode::OK)

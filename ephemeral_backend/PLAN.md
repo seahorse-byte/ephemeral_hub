@@ -85,7 +85,7 @@ If you can't see what your application is doing, you can't support it.
   * **Structured Logging:** Use the `tracing` crate with `tracing-subscriber` to emit structured logs (e.g., in JSON format). This allows you to easily search, filter, and analyze logs in a service like Datadog, Grafana Loki, or the AWS CloudWatch.
 
       * Log every incoming request and its outcome (status code, latency).
-      * Log key events, like `space_created`, `file_uploaded`, `space_expired`.
+      * Log key events, like `hub_created`, `file_uploaded`, `hub_expired`.
 
   * **Metrics:** Track the health and performance of your application.
 

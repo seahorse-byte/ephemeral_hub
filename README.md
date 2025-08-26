@@ -12,9 +12,9 @@
 
 ## This project is a monorepo containing
 
-- ephemeral_backend: An Axum-based Rust server that manages spaces, files, and WebSocket connections.
+- ephemeral_backend: An Axum-based Rust server that manages hubs, files, and WebSocket connections.
 - ephemeral_web: A Dioxus-based frontend application compiled to WebAssembly.
-- ephemeral_cli: A command-line interface for power users to interact with spaces.
+- ephemeral_cli: A command-line interface for power users to interact with hubs.
 
 ### 🚀 Getting Started
 

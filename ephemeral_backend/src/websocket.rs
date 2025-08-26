@@ -61,38 +61,13 @@ async fn handle_socket(socket: WebSocket, state: AppState, hub_id: String) {
     });
 
     // Task to handle incoming messages from the client.
-    let recv_task_space_id = hub_id.clone();
+    let recv_task_hub_id = hub_id.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             if tx.send(text.to_string()).is_err() {
                 // No active subscribers, but that's okay.
             }
 
-            // if let Ok(WsMessage::PathCompleted(path)) = serde_json::from_str(&text) {
-            //     let mut conn = match state.redis.get().await {
-            //         Ok(conn) => conn,
-            //         Err(e) => {
-            //             warn!("Failed to get Redis connection: {}", e);
-            //             continue;
-            //         }
-            //     };
-
-            //     let key = format!("hub:{}", recv_task_space_id);
-
-            //     // Fetch the current hub data
-            //     if let Ok(Some(space_json)) = conn.get::<_, Option<String>>(&key).await {
-            //         if let Ok(mut hub) = serde_json::from_str::<Hub>(&space_json) {
-            //             // Add the new path and save it back
-            //             hub.whiteboard.push(path);
-            //             let updated_json = serde_json::to_string(&hub).unwrap();
-            //             let ttl: isize = conn.ttl(&key).await.unwrap_or(-1);
-
-            //             if ttl > 0 {
-            //                 let _: () = conn.set_ex(&key, updated_json, ttl as u64).await.unwrap();
-            //             }
-            //         }
-            //     }
-            // }
             if let Ok(WsMessage::PathCompleted(path)) = serde_json::from_str(&text) {
                 let mut conn = match state.redis.get().await {
                     Ok(conn) => conn,
@@ -102,11 +77,11 @@ async fn handle_socket(socket: WebSocket, state: AppState, hub_id: String) {
                     }
                 };
 
-                let key = format!("hub:{}", recv_task_space_id);
+                let key = format!("hub:{}", recv_task_hub_id);
 
                 // Fetch the current hub data
-                if let Ok(Some(space_json)) = conn.get::<_, Option<String>>(&key).await {
-                    if let Ok(mut hub) = serde_json::from_str::<Hub>(&space_json) {
+                if let Ok(Some(hub_json)) = conn.get::<_, Option<String>>(&key).await {
+                    if let Ok(mut hub) = serde_json::from_str::<Hub>(&hub_json) {
                         // Add the new path and save it back
                         hub.whiteboard.push(path);
                         let updated_json = serde_json::to_string(&hub).unwrap();

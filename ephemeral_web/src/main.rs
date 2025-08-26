@@ -44,10 +44,10 @@ fn Home() -> Element {
         async move {
             // Wait for a message from the `onclick` handler.
             while rx.next().await.is_some() {
-                let api_url = "https://ephemeral-hub.com/api/spaces";
+                let api_url = "https://ephemeral-hub.com/api/hubs";
 
                 #[derive(Deserialize, Debug)]
-                struct CreateSpaceResponse {
+                struct CreateHubResponse {
                     id: String,
                 }
 
@@ -56,7 +56,7 @@ fn Home() -> Element {
 
                 match response {
                     Ok(resp) => {
-                        if let Ok(data) = resp.json::<CreateSpaceResponse>().await {
+                        if let Ok(data) = resp.json::<CreateHubResponse>().await {
                             // Because this is run in a coroutine, the navigator
                             // update will be correctly processed by the scheduler.
                             navigator.push(Route::Hub { id: data.id });
@@ -224,13 +224,13 @@ fn Home() -> Element {
 }
 
 #[derive(PartialEq, Props, Clone)]
-pub struct SpaceProps {
+pub struct HubProps {
     id: String,
 }
 
 // This struct will hold the data we fetch from the backend.
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug)]
-struct SpaceData {
+struct HubData {
     id: String,
     content: String,
     created_at: String,
@@ -245,23 +245,23 @@ struct FileInfo {
 }
 
 #[allow(non_snake_case)]
-pub fn Hub(props: SpaceProps) -> Element {
+pub fn Hub(props: HubProps) -> Element {
     let id = props.id.clone();
 
-    let space_resource = use_resource(move || {
+    let hub_resource = use_resource(move || {
         let id = id.clone();
         async move {
-            let api_url = format!("https://ephemeral-hub.com/api/spaces/{}", id);
+            let api_url = format!("https://ephemeral-hub.com/api/hubs/{}", id);
             reqwest::get(&api_url)
                 .await
                 .ok()?
-                .json::<SpaceData>()
+                .json::<HubData>()
                 .await
                 .ok()
         }
     });
 
-    let resource_state = space_resource.read();
+    let resource_state = hub_resource.read();
 
     // Coroutine to handle the download process
     let download_coroutine = use_coroutine({
@@ -271,8 +271,7 @@ pub fn Hub(props: SpaceProps) -> Element {
             let hub_id = hub_id.clone();
             async move {
                 while rx.next().await.is_some() {
-                    let api_url =
-                        format!("https://ephemeral-hub.com/api/spaces/{}/download", hub_id);
+                    let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/download", hub_id);
                     let client = reqwest::Client::new();
                     match client.get(&api_url).send().await {
                         Ok(response) => {
@@ -293,7 +292,7 @@ pub fn Hub(props: SpaceProps) -> Element {
                                 a.set_attribute("href", &url).unwrap();
                                 a.set_attribute(
                                     "download",
-                                    &format!("ephemeral_space_{}.zip", hub_id),
+                                    &format!("ephemeral_hub_{}.zip", hub_id),
                                 )
                                 .unwrap();
                                 a.dispatch_event(&web_sys::MouseEvent::new("click").unwrap())
@@ -347,7 +346,7 @@ pub fn Hub(props: SpaceProps) -> Element {
             class: "absolute inset-0 w-full h-full opacity-25 pointer-events-none",
             defs {
                 linearGradient {
-                    id: "spaceNetworkGradient",
+                    id: "hubNetworkGradient",
                     x1: "0%", y1: "0%", x2: "100%", y2: "100%",
                     stop { offset: "0%", stop_color: "#3b82f6", stop_opacity: "0.5" }
                     stop { offset: "50%", stop_color: "#06b6d4", stop_opacity: "0.3" }
@@ -363,10 +362,10 @@ pub fn Hub(props: SpaceProps) -> Element {
             }
 
             // Main connection lines
-            line { x1: "5%", y1: "15%", x2: "25%", y2: "35%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
-            line { x1: "75%", y1: "20%", x2: "95%", y2: "40%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
-            line { x1: "15%", y1: "80%", x2: "35%", y2: "90%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
-            line { x1: "65%", y1: "70%", x2: "85%", y2: "85%", stroke: "url(#spaceNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "5%", y1: "15%", x2: "25%", y2: "35%", stroke: "url(#hubNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "75%", y1: "20%", x2: "95%", y2: "40%", stroke: "url(#hubNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "15%", y1: "80%", x2: "35%", y2: "90%", stroke: "url(#hubNetworkGradient)", stroke_width: "1.5" }
+            line { x1: "65%", y1: "70%", x2: "85%", y2: "85%", stroke: "url(#hubNetworkGradient)", stroke_width: "1.5" }
 
             // Data flow lines
             line { x1: "20%", y1: "50%", x2: "80%", y2: "50%", stroke: "url(#dataFlow)", stroke_width: "2" }
@@ -429,7 +428,7 @@ pub fn Hub(props: SpaceProps) -> Element {
                                     FileDrop {
                                         hub_id: props.id.clone(),
                                         files: data.files.clone(),
-                                        space_resource: space_resource.clone()
+                                        hub_resource: hub_resource.clone()
                                     }
                                     Whiteboard { hub_id: props.id.clone(), initial_paths: data.whiteboard.clone() }
                                 }
@@ -497,7 +496,7 @@ pub fn Hub(props: SpaceProps) -> Element {
 /// A sub-component specifically for the Text Bin UI.
 #[derive(PartialEq, Props, Clone)]
 struct TextBinProps {
-    data: SpaceData,
+    data: HubData,
     hub_id: String,
 }
 
@@ -512,7 +511,7 @@ fn TextBin(props: TextBinProps) -> Element {
         let hub_id = hub_id.clone();
         async move {
             while let Some(content) = rx.next().await {
-                let api_url = format!("https://ephemeral-hub.com/api/spaces/{}/text", hub_id);
+                let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/text", hub_id);
                 let client = reqwest::Client::new();
                 let res = client.put(api_url).body(content).send().await;
 
@@ -591,7 +590,7 @@ fn TextBin(props: TextBinProps) -> Element {
 struct FileDropProps {
     hub_id: String,
     files: Vec<FileInfo>,
-    space_resource: Resource<Option<SpaceData>>,
+    hub_resource: Resource<Option<HubData>>,
 }
 
 #[allow(non_snake_case)]
@@ -602,7 +601,7 @@ fn FileDrop(props: FileDropProps) -> Element {
     let upload_coroutine: Coroutine<Vec<(String, Vec<u8>)>> =
         use_coroutine(move |mut rx: UnboundedReceiver<Vec<(String, Vec<u8>)>>| {
             let hub_id = props.hub_id.clone();
-            let mut space_resource = props.space_resource.clone();
+            let mut hub_resource = props.hub_resource.clone();
             let mut is_uploading = is_uploading.clone();
             async move {
                 while let Some(files_with_data) = rx.next().await {
@@ -614,12 +613,12 @@ fn FileDrop(props: FileDropProps) -> Element {
                     }
 
                     let client = reqwest::Client::new();
-                    let api_url = format!("https://ephemeral-hub.com/api/spaces/{}/files", hub_id);
+                    let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/files", hub_id);
 
                     let res = client.post(api_url).multipart(form).send().await;
 
                     if res.is_ok() {
-                        space_resource.restart();
+                        hub_resource.restart();
                     } else {
                         log::error!("Failed to upload files: {:?}", res.err());
                     }
@@ -760,7 +759,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsMessage>| {
         let paths = paths.clone();
-        let ws_url = format!("ws://ephemeral-hub.com/ws/spaces/{}", props.hub_id);
+        let ws_url = format!("ws://ephemeral-hub.com/ws/hubs/{}", props.hub_id);
 
         async move {
             let ws = match WebSocket::open(&ws_url) {

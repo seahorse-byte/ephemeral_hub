@@ -93,19 +93,19 @@ async fn main() {
 
     // --- ADD the new routes to the router ---
     let app = Router::new()
-        .route("/api/spaces", post(handlers::create_space))
-        .route("/api/spaces/{id}", get(handlers::get_space))
-        .route("/api/spaces/{id}/text", put(handlers::update_text_bin))
-        .route("/api/spaces/{id}/files", post(handlers::upload_file))
-        .route("/api/spaces/{id}/download", get(handlers::download_files))
-        .route("/ws/spaces/{id}", get(websocket::websocket_handler))
+        .route("/api/hubs", post(handlers::create_hub))
+        .route("/api/hubs/{id}", get(handlers::get_hub))
+        .route("/api/hubs/{id}/text", put(handlers::update_text_bin))
+        .route("/api/hubs/{id}/files", post(handlers::upload_file))
+        .route("/api/hubs/{id}/download", get(handlers::download_files))
+        .route("/ws/hubs/{id}", get(websocket::websocket_handler))
         .with_state(app_state)
         .layer(cors);
 
     // --- Server Launch ---
-        // Bind to 0.0.0.0 so the server is reachable from other hosts/containers
-        // (when running inside Docker the process must listen on all interfaces).
-        let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
-        info!("🚀 Server listening on {}", listener.local_addr().unwrap());
-        axum::serve(listener, app).await.unwrap();
+    // Bind to 0.0.0.0 so the server is reachable from other hosts/containers
+    // (when running inside Docker the process must listen on all interfaces).
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    info!("🚀 Server listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
 }
