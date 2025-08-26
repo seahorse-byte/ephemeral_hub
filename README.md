@@ -1,7 +1,7 @@
 
-<center>
+<p style="text-align: center;">
   <img src="ephemeral_web/assets/logo.png" alt="ephemeral hub" width="200"/>
-</center >
+</p>
 <h1 align="center"> Ephemeral Hub</h1>
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/ed0b5f52-0792-4dc4-b33b-780bc3d1f1a1/deploy-status)](https://app.netlify.com/projects/ephemeral-hub/deploys)
