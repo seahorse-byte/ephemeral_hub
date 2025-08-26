@@ -1746,20 +1746,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ephemeral"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "comfy-table",
- "reqwest",
- "serde",
- "serde_json",
- "spinners",
- "tokio",
-]
-
-[[package]]
 name = "ephemeral_backend"
 version = "0.1.0"
 dependencies = [
@@ -1782,6 +1768,20 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "zip",
+]
+
+[[package]]
+name = "ephemeral_hub"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "comfy-table",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "spinners",
+ "tokio",
 ]
 
 [[package]]
