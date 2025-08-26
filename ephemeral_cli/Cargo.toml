@@ -2,6 +2,10 @@
 name = "ephemeral_cli"
 version = "0.1.0"
 edition = "2024"
+description = "Ephemeral Hub is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time."
+license = "MIT"
+repository = "https://github.com/seahorse-byte/ephemeral_hub"
+homepage = "https://ephemeral-hub.com/"
 
 [dependencies]
 chrono = "0.4.41"
