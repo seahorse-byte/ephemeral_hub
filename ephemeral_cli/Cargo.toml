@@ -1,5 +1,5 @@
 [package]
-name = "ephemeral_cli"
+name = "ephemeral"
 version = "0.1.0"
 edition = "2024"
 description = "Ephemeral Hub is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time."
