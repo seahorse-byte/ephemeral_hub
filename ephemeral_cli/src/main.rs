@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use tokio::fs;
 
 const EPHEMERAL_BANNER: &str = r#"
-              .==-.                   .-==.
+                .==-.                   .-==.
                  \()8`-._  `.   .'  _.-'8()/
                  (88"   ::.  \./  .::   "88)
                   \_.'`-::::.(#).::::-'`._/
