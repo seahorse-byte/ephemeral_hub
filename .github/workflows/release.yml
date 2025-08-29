@@ -48,19 +48,19 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build CLI
-        # This still uses the folder name.
+        # The --package flag for `build` must use the workspace member name (the folder name).
         run: cargo build --release --package ephemeral_cli --target ${{ matrix.target }}
 
       - name: Package for Release
         shell: bash
         run: |
-          # FIX: The binary name is now `ephemeral`.
+          # The binary name is `ephemeral` from the [[bin]] section in Cargo.toml.
           BINARY_NAME="ephemeral"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             BINARY_NAME="ephemeral.exe"
           fi
           
-          # Use the public package name for the archive.
+          # The archive name uses the public package name.
           ARCHIVE_NAME="ephemeral_hub-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
           
           tar -czvf $ARCHIVE_NAME -C target/${{ matrix.target }}/release $BINARY_NAME
@@ -85,6 +85,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Publish to crates.io
-        # This still uses the public package name.
+        # This correctly uses the public package name.
         run: cargo publish -p ephemeral_hub --token ${{ secrets.CARGO_API_TOKEN }}
 
