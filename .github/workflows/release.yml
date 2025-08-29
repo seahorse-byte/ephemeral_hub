@@ -48,8 +48,8 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build CLI
-        # The --package flag for `build` must use the workspace member name (the folder name).
-        run: cargo build --release --package ephemeral_cli --target ${{ matrix.target }}
+        # FIX: The --package flag must use the crate name from the Cargo.toml file.
+        run: cargo build --release --package ephemeral_hub --target ${{ matrix.target }}
 
       - name: Package for Release
         shell: bash
