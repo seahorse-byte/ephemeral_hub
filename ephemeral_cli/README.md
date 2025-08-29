@@ -21,19 +21,16 @@ ephemeral create
 
 ```bash
 # pipe - Reads text from standard input and sends it to a hub's text bin.
-
 cat log.txt | ephemeral pipe <API_URL>
 ```
 
 ```bash
 # upload -- Uploads a local file to a hub.
-
 ephemeral upload ./archive.zip <API_URL>
 ```
 
 ```bash
 # get -- Downloads all content from a hub (text bin and all files) as a single .zip archive.
-
 ephemeral get <API_URL>
 ```
 

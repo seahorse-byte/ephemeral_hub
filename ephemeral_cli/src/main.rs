@@ -172,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            // Read the file's contents asynchronously.
             let file_bytes = fs::read(&file_path).await?;
             let part = multipart::Part::bytes(file_bytes).file_name(file_name);
             let form = multipart::Form::new().part("file", part);
