@@ -48,21 +48,21 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build CLI
-        # FIX: The --package flag must use the crate name from Cargo.toml.
-        run: cargo build --release --package ephemeral-hub --target ${{ matrix.target }}
+        # This still uses the folder name.
+        run: cargo build --release --package ephemeral_cli --target ${{ matrix.target }}
 
       - name: Package for Release
         shell: bash
         run: |
-          # The binary name comes from the `name` in `ephemeral_cli/Cargo.toml`.
-          BINARY_NAME="ephemeral-hub"
+          # FIX: The binary name is now `ephemeral`.
+          BINARY_NAME="ephemeral"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            BINARY_NAME="ephemeral-hub.exe"
+            BINARY_NAME="ephemeral.exe"
           fi
           
-          ARCHIVE_NAME="ephemeral-hub-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          # Use the public package name for the archive.
+          ARCHIVE_NAME="ephemeral_hub-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
           
-          # The binary is located in `target/<target>/release/`
           tar -czvf $ARCHIVE_NAME -C target/${{ matrix.target }}/release $BINARY_NAME
           
           echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
@@ -79,12 +79,12 @@ jobs:
 
   publish-crates:
     name: Publish to Crates.io
-    needs: build-binaries # Run this only after the binaries have been successfully built.
+    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Publish to crates.io
-        # The `-p` flag must use the crate name from Cargo.toml, not the folder name.
-        run: cargo publish -p ephemeral-hub --token ${{ secrets.CARGO_API_TOKEN }}
+        # This still uses the public package name.
+        run: cargo publish -p ephemeral_hub --token ${{ secrets.CARGO_API_TOKEN }}
 
