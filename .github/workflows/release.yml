@@ -1,0 +1,89 @@
+# File: .github/workflows/release.yml
+name: Release Ephemeral Hub CLI
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+' # Trigger on tags like v0.1.0
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build-binaries:
+    name: Build Binaries
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build CLI
+        # In a workspace, we specify the package by its folder name.
+        run: cargo build --release --package ephemeral_cli --target ${{ matrix.target }}
+
+      - name: Package for Release
+        shell: bash
+        run: |
+          # The binary name comes from the `name` in `ephemeral_cli/Cargo.toml`.
+          # We assume it's `ephemeral-hub`.
+          BINARY_NAME="ephemeral-hub"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            BINARY_NAME="ephemeral-hub.exe"
+          fi
+          
+          ARCHIVE_NAME="ephemeral-hub-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          
+          # The binary is located in `target/<target>/release/`
+          tar -czvf $ARCHIVE_NAME -C target/${{ matrix.target }}/release $BINARY_NAME
+          
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./${{ env.ARCHIVE_NAME }}
+          asset_name: ${{ env.ARCHIVE_NAME }}
+          asset_content_type: application/gzip
+
+  publish-crates:
+    name: Publish to Crates.io
+    needs: build-binaries # Run this only after the binaries have been successfully built.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Publish to crates.io
+        run: sleep 30 &&cargo publish -p ephemeral_cli --token ${{ secrets.CARGO_API_TOKEN }}
