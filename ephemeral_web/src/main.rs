@@ -10,7 +10,46 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::time::Duration;
 use uuid::Uuid;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::{spawn_local, JsFuture};
+use web_sys::{window, Navigator};
 use web_sys::{Blob, Url};
+
+fn copy_to_clipboard_web(text: String) {
+    spawn_local(async move {
+        if let Some(win) = window() {
+            let navigator: Navigator = win.navigator();
+
+            // Check if navigator.clipboard is defined
+            let navigator_js: JsValue = navigator.into();
+            if let Some(clipboard_val) =
+                js_sys::Reflect::get(&navigator_js, &JsValue::from_str("clipboard")).ok()
+            {
+                if clipboard_val.is_undefined() {
+                    web_sys::console::log_1(&"Clipboard API unavailable.".into());
+                    return;
+                }
+
+                // Cast JsValue -> Clipboard safely
+                let clipboard: web_sys::Clipboard = clipboard_val.unchecked_into();
+                let promise = clipboard.write_text(&text);
+                let fut = JsFuture::from(promise);
+
+                match fut.await {
+                    Ok(_) => web_sys::console::log_1(&"Copied to clipboard!".into()),
+                    Err(err) => web_sys::console::log_1(
+                        &format!("Clipboard write failed: {:?}", err).into(),
+                    ),
+                }
+            } else {
+                web_sys::console::log_1(&"Clipboard property missing.".into());
+            }
+        } else {
+            web_sys::console::log_1(&"No window available.".into());
+        }
+    });
+}
 
 #[derive(Routable, Clone, PartialEq)]
 #[rustfmt::skip]
@@ -44,7 +83,7 @@ fn Home() -> Element {
         async move {
             // Wait for a message from the `onclick` handler.
             while rx.next().await.is_some() {
-                let api_url = "https://ephemeral-hub.com/api/hubs";
+                let api_url = "https://api.ephemeral-hub.com/api/hubs";
 
                 #[derive(Deserialize, Debug)]
                 struct CreateHubResponse {
@@ -74,10 +113,10 @@ fn Home() -> Element {
 
     let floating_shapes = (0..15).map(|i| {
         let (size, shape) = match i % 4 {
-            0 => ("w-8 h-8", "rounded-lg"),
-            1 => ("w-12 h-12", "rounded-full"),
+            0 => ("w-4 h-4", "rounded-lg"),
+            1 => ("w-10 h-10", "rounded-full"),
             2 => ("w-6 h-6", "rounded-sm"),
-            _ => ("w-10 h-10", "rounded-lg"),
+            _ => ("w-8 h-8", "rounded-lg"),
         };
 
         let color = match i % 3 {
@@ -126,23 +165,29 @@ fn Home() -> Element {
 
             div { class: "relative z-10 flex min-h-screen",
                 div { class: "text-center max-w-auto mx-auto",
-                    img {
-                        src: LOGO,
-                        class: "mx-auto  h-40 w-auto",
-                        alt: "Ephemeral Hub Logo"
-                    }
-                    h1 {
-                        class: "text-6xl md:text-8xl font-bold mb-8 bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent",
-                        "Ephemeral Hub"
 
+                    // Logo and Main Title
+                    div { class: "flex flex-col items-center justify-center mb-4",
+                        img {
+                            src: LOGO,
+                            class: "h-32 w-auto mb-4",
+                            alt: "Ephemeral Hub Logo"
+                        }
+                        h1 {
+                            class: "text-6xl md:text-8xl font-bold bg-gradient-to-r from-white via-blue-400 to-orange-400 bg-clip-text text-transparent",
+                            "Ephemeral Hub"
+                        }
                     }
+
+                    // Subtitle
                     p {
-                        class: "text-xl md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed",
-                        "Share text and files instantly with a temporary, shareable URL."
+                        class: "text-xl md:text-2xl text-slate-300 mb-16 max-w-2xl mx-auto leading-relaxed",
+                        "Share text + files instantly with a temporary URL"
                     }
 
+                    // CTA Button
                     button {
-                        class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-3xl px-14 py-10 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-48",
+                        class: "bg-orange-500 hover:bg-orange-600 text-slate-900 font-semibold text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 mb-20",
                         onclick: move |_| { coroutine.send(()); },
                         "Create New Hub"
                     }
@@ -151,69 +196,54 @@ fn Home() -> Element {
                     div { class: "grid md:grid-cols-3 gap-8 max-w-5xl mx-auto",
 
                         // Feature 1: Instant Sharing
-                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
-                                svg {
-                                    class: "w-6 h-6 text-blue-400",
-                                    fill: "none",
-                                    stroke: "currentColor",
-                                    view_box: "0 0 24 24",
-                                    path {
-                                        stroke_linecap: "round",
-                                        stroke_linejoin: "round",
-                                        stroke_width: "2",
-                                        d: "M13 10V3L4 14h7v7l9-11h-7z"
-                                    }
-                                }
+                                svg { class: "w-6 h-6 text-blue-400", fill: "none", stroke: "currentColor", view_box: "0 0 24 24", path { stroke_linecap: "round", stroke_linejoin: "round", stroke_width: "2", d: "M13 10V3L4 14h7v7l9-11h-7z" } }
                             }
                             h3 { class: "text-lg font-semibold text-white mb-2", "Instant Sharing" }
                             p { class: "text-slate-300", "Share content with a single click. No registration required." }
                         }
 
                         // Feature 2: Temporary & Secure
-                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
-                                svg {
-                                    class: "w-6 h-6 text-orange-400",
-                                    fill: "none",
-                                    stroke: "currentColor",
-                                    view_box: "0 0 24 24",
-                                    path {
-                                        stroke_linecap: "round",
-                                        stroke_linejoin: "round",
-                                        stroke_width: "2",
-                                        d: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                    }
-                                }
+                                svg { class: "w-6 h-6 text-orange-400", fill: "none", stroke: "currentColor", view_box: "0 0 24 24", path { stroke_linecap: "round", stroke_linejoin: "round", stroke_width: "2", d: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" } }
                             }
                             h3 { class: "text-lg font-semibold text-white mb-2", "Temporary & Secure" }
                             p { class: "text-slate-300", "Content expires automatically. No permanent storage." }
                         }
 
+
                         // Feature 3: Text & Files
-                        div { class: "mx-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
+                        div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
                             div { class: "w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto",
-                                svg {
-                                    class: "w-6 h-6 text-blue-400",
-                                    fill: "none",
-                                    stroke: "currentColor",
-                                    view_box: "0 0 24 24",
-                                    path {
-                                        stroke_linecap: "round",
-                                        stroke_linejoin: "round",
-                                        stroke_width: "2",
-                                        d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                    }
-                                }
+                                svg { class: "w-6 h-6 text-blue-400", fill: "none", stroke: "currentColor", view_box: "0 0 24 24", path { stroke_linecap: "round", stroke_linejoin: "round", stroke_width: "2", d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" } }
                             }
                             h3 { class: "text-lg font-semibold text-white mb-2", "Text & Files" }
                             p { class: "text-slate-300", "Support for both text content and file uploads." }
                         }
                     }
+
                     CliSection {}
+
+                    div { class: "flex flex-col items-center justify-center m-10 border-t border-slate-700/50 pt-4",
+                        footer {
+                            class: "w-full text-center",
+                            p {
+                                class: "text-xs text-gray-500",
+                                "Built with ❤️ by ",
+                                a {
+                                    class: "text-green-400 hover:text-green-300",
+                                    href: "https://github.com/seahorse-byte",
+                                    target: "_blank",
+                                    "Olsi Gjeci"
+                                }
+                            }
+                        }
+                    }
                 }
-                div {}
             }
+
 
             div { class: "absolute inset-0 opacity-10 pointer-events-none",
                 div { class: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-blue-400/30" }
@@ -235,104 +265,123 @@ enum CliTab {
 #[allow(non_snake_case)]
 fn CliSection() -> Element {
     let mut active_tab = use_signal(|| CliTab::Create);
+    let copy_feedback = use_signal(String::new);
 
-    let tab_class = "px-4 py-2 rounded-t-lg transition-colors duration-200";
-    let active_class = "bg-slate-700 text-orange-400";
-    let inactive_class = "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50";
+    let tab_button_class = "px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200 focus:outline-none";
+    let active_class = "bg-blue-600 text-white";
+    let inactive_class = "text-slate-300 hover:bg-slate-700/50";
 
-    let create_class = if active_tab() == CliTab::Create {
-        active_class
-    } else {
-        inactive_class
-    };
-    let pipe_class = if active_tab() == CliTab::Pipe {
-        active_class
-    } else {
-        inactive_class
-    };
-    let upload_class = if active_tab() == CliTab::Upload {
-        active_class
-    } else {
-        inactive_class
-    };
-    let get_class = if active_tab() == CliTab::Get {
-        active_class
-    } else {
-        inactive_class
+    let tab_class = |tab: CliTab| {
+        format!(
+            "{} {}",
+            tab_button_class,
+            if active_tab() == tab {
+                active_class
+            } else {
+                inactive_class
+            }
+        )
     };
 
     rsx! {
-        div { class: "relative z-10 w-full max-w-4xl mx-auto mt-14 mb-10 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:bg-slate-700/50 transition-all duration-300",
-            div { class: "text-center mb-8",
-                h2 { class: "text-4xl font-bold text-white", "For Power Users" }
-                p { class: "text-lg text-slate-300 mt-2", "Interact with spaces directly from your terminal." }
-            }
+        div { class: "w-full max-w-4xl mx-auto mt-16",
+            h2 { class: "text-3xl font-bold text-center text-white mb-8", "For Power Users" }
+            div { class: "bg-slate-900/70 backdrop-blur-sm border border-slate-700 rounded-xl shadow-2xl",
+                // Fake "terminal header"
+                div { class: "flex items-center p-3 border-b border-slate-700",
+                    div { class: "flex items-center gap-2",
+                        div { class: "w-3 h-3 bg-red-500 rounded-full" }
+                        div { class: "w-3 h-3 bg-yellow-500 rounded-full" }
+                        div { class: "w-3 h-3 bg-green-500 rounded-full" }
+                    }
+                    p { class: "text-sm text-slate-400 text-center flex-grow", "ephemeral --help" }
+                }
 
-            div { class: "bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg",
-                // Tabs
-                div { class: "flex border-b border-slate-700",
-                    // FIX: Determine the class string before using it in the macro.
+                // Tab buttons
+                div { class: "p-4 flex items-center justify-center gap-2 bg-slate-800/50",
                     button {
-                        class: "{tab_class} {create_class}",
+                        class: "{tab_class(CliTab::Create)}",
                         onclick: move |_| active_tab.set(CliTab::Create),
                         "create"
                     }
                     button {
-                        class: "{tab_class} {pipe_class}",
+                        class: "{tab_class(CliTab::Pipe)}",
                         onclick: move |_| active_tab.set(CliTab::Pipe),
                         "pipe"
                     }
                     button {
-                        class: "{tab_class} {upload_class}",
+                        class: "{tab_class(CliTab::Upload)}",
                         onclick: move |_| active_tab.set(CliTab::Upload),
                         "upload"
                     }
                     button {
-                        class: "{tab_class} {get_class}",
+                        class: "{tab_class(CliTab::Get)}",
                         onclick: move |_| active_tab.set(CliTab::Get),
                         "get"
                     }
                 }
 
+                // Active tab content
+                div { class: "p-6 font-mono text-left text-sm",
+                    {
+                        let (comment, command) = match active_tab() {
+                            CliTab::Create => ("// Instantly generates a new ephemeral hub.", "ephemeral create"),
+                            CliTab::Pipe => ("// Pipes text from stdin to a hub's text bin.", "cat log.txt | ephemeral pipe <url>"),
+                            CliTab::Upload => ("// Uploads a local file to a hub.", "ephemeral upload ./archive.zip <url>"),
+                            CliTab::Get => ("// Downloads all content from a hub as a .zip file.", "ephemeral get <url>"),
+                        };
 
+                        let copy_button_classes = if copy_feedback().is_empty() {
+                            "bg-slate-600 hover:bg-slate-500 text-white"
+                        } else {
+                            "bg-green-500 text-white"
+                        };
 
+                        rsx! {
+                            div { class: "flex justify-between items-center bg-slate-800/50 p-4 rounded-lg",
+                                div {
+                                    p { class: "text-slate-300 mb-2", "{comment}" }
+                                    code { class: "text-cyan-400", "$ {command}" }
+                                }
+                                button {
+                                    class: "px-3 py-1 text-xs font-semibold rounded-md transition-colors duration-200 {copy_button_classes}",
+                                   onclick: move |_| {
+                                        let command = command.to_string();
+                                        let mut copy_feedback = copy_feedback.clone();
 
-                // Content
-                div { class: "p-6 font-mono text-sm text-slate-200 bg-slate-700 rounded-b-xl",
-                    match active_tab() {
-                        CliTab::Create => rsx! {
-                            p { class: "mb-2 text-slate-400", "# Instantly generates a new space." }
-                            p { "$ ", span { class: "text-cyan-400", "ephemeral create" } }
-                        },
-                        CliTab::Pipe => rsx! {
-                            p { class: "mb-2 text-slate-400", "# Reads text from standard input and sends it to a space." }
-                            p { "$ ", span { class: "text-cyan-400", "cat log.txt | ephemeral pipe <API_URL>" } }
-                        },
-                        CliTab::Upload => rsx! {
-                            p { class: "mb-2 text-slate-400", "# Uploads a local file to a space." }
-                            p { "$ ", span { class: "text-cyan-400", "ephemeral upload ./archive.zip <API_URL>" } }
-                        },
-                        CliTab::Get => rsx! {
-                            p { class: "mb-2 text-slate-400", "# Downloads all content from a space as a .zip archive." }
-                            p { "$ ", span { class: "text-cyan-400", "ephemeral get <API_URL>" } }
-                        },
+                                        copy_to_clipboard_web(command.clone());
+
+                                        spawn_local(async move {
+                                            copy_feedback.set("Copied!".to_string());
+                                            gloo_timers::future::sleep(std::time::Duration::from_secs(2)).await;
+                                            copy_feedback.set(String::new());
+                                        });
+                                    },
+                                    if copy_feedback().is_empty() {
+                                        "Copy"
+                                    } else {
+                                        "Copied!"
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            // Links to crates.io and GitHub
-            div { class: "mt-6 flex justify-center gap-6",
-                a {
-                    href: "https://crates.io/crates/ephemeral_hub",
-                    target: "_blank",
-                    class: "text-slate-300 hover:text-orange-400 transition-colors duration-200",
-                    "Install via crates.io"
-                }
-                a {
-                    href: "https://github.com/seahorse-byte/ephemeral_hub/tags",
-                    target: "_blank",
-                    class: "text-slate-300 hover:text-orange-400 transition-colors duration-200",
-                    "Download from GitHub Releases"
+                // Footer links
+                div { class: "p-4 border-t border-slate-700 text-center flex items-center justify-center gap-6",
+                    a {
+                        href: "https://crates.io/crates/ephemeral_hub",
+                        target: "_blank",
+                        class: "text-orange-400 hover:text-orange-300 transition-colors text-sm font-semibold",
+                        "Install from Crates.io"
+                    }
+                    a {
+                        href: "https://github.com/seahorse-byte/ephemeral_hub/tags",
+                        target: "_blank",
+                        class: "text-blue-400 hover:text-blue-300 transition-colors text-sm font-semibold",
+                        "Download from GitHub"
+                    }
                 }
             }
         }
@@ -367,7 +416,7 @@ pub fn Hub(props: HubProps) -> Element {
     let hub_resource = use_resource(move || {
         let id = id.clone();
         async move {
-            let api_url = format!("https://ephemeral-hub.com/api/hubs/{}", id);
+            let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}", id);
             reqwest::get(&api_url)
                 .await
                 .ok()?
@@ -387,7 +436,8 @@ pub fn Hub(props: HubProps) -> Element {
             let hub_id = hub_id.clone();
             async move {
                 while rx.next().await.is_some() {
-                    let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/download", hub_id);
+                    let api_url =
+                        format!("https://api.ephemeral-hub.com/api/hubs/{}/download", hub_id);
                     let client = reqwest::Client::new();
                     match client.get(&api_url).send().await {
                         Ok(response) => {
@@ -627,7 +677,7 @@ fn TextBin(props: TextBinProps) -> Element {
         let hub_id = hub_id.clone();
         async move {
             while let Some(content) = rx.next().await {
-                let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/text", hub_id);
+                let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}/text", hub_id);
                 let client = reqwest::Client::new();
                 let res = client.put(api_url).body(content).send().await;
 
@@ -729,7 +779,8 @@ fn FileDrop(props: FileDropProps) -> Element {
                     }
 
                     let client = reqwest::Client::new();
-                    let api_url = format!("https://ephemeral-hub.com/api/hubs/{}/files", hub_id);
+                    let api_url =
+                        format!("https://api.ephemeral-hub.com/api/hubs/{}/files", hub_id);
 
                     let res = client.post(api_url).multipart(form).send().await;
 
@@ -826,8 +877,6 @@ fn FileDrop(props: FileDropProps) -> Element {
     }
 }
 
-// ---  WHITEBOARD COMPONENT ---
-
 // Data structure for a single drawing path
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 struct PathData {
@@ -875,7 +924,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
     let ws_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<WsMessage>| {
         let paths = paths.clone();
-        let ws_url = format!("ws://ephemeral-hub.com/ws/hubs/{}", props.hub_id);
+        let ws_url = format!("wss://api.ephemeral-hub.com/ws/hubs/{}", props.hub_id);
 
         async move {
             let ws = match WebSocket::open(&ws_url) {

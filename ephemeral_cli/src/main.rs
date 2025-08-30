@@ -22,7 +22,7 @@ const EPHEMERAL_BANNER: &str = r#"
 "#;
 
 fn get_api_base_url() -> String {
-    env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://ephemeral-hub.com".to_string())
+    env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://api.ephemeral-hub.com".to_string())
 }
 
 /// A CLI for interacting with Ephemeral Hub.
@@ -40,7 +40,7 @@ enum Commands {
     /// Pipe text into a hub's text bin.
     /// Example: cat log.txt | ephemeral pipe <URL>
     Pipe {
-        /// The full API URL of the hub (e.g., http://.../api/hub/xyz)
+        /// The full API URL of the hub (e.g., http://.../api/hubs/xyz)
         url: String,
     },
     /// Upload a file to a hub.
@@ -84,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut sp = Spinner::new(Spinners::Dots9, "Creating a new hub...".into());
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hub", api_base_url);
+            let api_url = format!("{}/api/hubs", api_base_url);
 
             let response = client.post(&api_url).send().await;
 
@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hub/{}/text", api_base_url, hub_id);
+            let api_url = format!("{}/api/hubs/{}/text", api_base_url, hub_id);
 
             let response = client.put(&api_url).body(buffer).send().await;
 
@@ -177,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let form = multipart::Form::new().part("file", part);
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hub/{}/files", api_base_url, hub_id);
+            let api_url = format!("{}/api/hubs/{}/files", api_base_url, hub_id);
 
             let response = client.post(&api_url).multipart(form).send().await;
 
@@ -211,7 +211,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hub/{}/download", api_base_url, hub_id);
+            let api_url = format!("{}/api/hubs/{}/download", api_base_url, hub_id);
 
             let response = client.get(&api_url).send().await;
 
