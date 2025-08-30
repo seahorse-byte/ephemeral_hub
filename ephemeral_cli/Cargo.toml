@@ -14,7 +14,7 @@ name = "ephemeral"   # This sets the command name to `ephemeral`
 path = "src/main.rs"
 
 [dependencies]
-chrono = "0.4.41"
+chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.45", features = ["derive"] }
 comfy-table = "7.1.4"
 reqwest = { version = "0.12.23", features = ["json", "multipart"] }

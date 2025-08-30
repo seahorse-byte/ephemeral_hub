@@ -432,7 +432,7 @@ pub fn Hub(props: HubProps) -> Element {
     let download_coroutine = use_coroutine({
         let hub_id = props.id.clone();
         move |mut rx: UnboundedReceiver<()>| {
-            // FIX: Clone the hub_id here, outside the async move block.
+            // Clone the hub_id here, outside the async move block.
             let hub_id = hub_id.clone();
             async move {
                 while rx.next().await.is_some() {

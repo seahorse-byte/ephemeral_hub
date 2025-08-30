@@ -180,9 +180,6 @@ pub async fn create_hub(
         .await?;
 
     debug!("Created new hub with id: {}", id);
-
-    // Use localhost in responses so the browser-frontends can reach the backend
-    // when running on the host machine while the server is inside Docker.
     let base_url = "http://localhost:3000";
     let expires_at = now + Duration::hours(24);
 

@@ -53,7 +53,7 @@ async fn handle_socket(socket: WebSocket, state: AppState, hub_id: String) {
     // Task to forward messages from the broadcast channel to the client.
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            // FIX: Convert the String from the broadcast channel into the type expected by Message::Text.
+            // Convert the String from the broadcast channel into the type expected by Message::Text.
             if sender.send(Message::Text(msg.into())).await.is_err() {
                 break;
             }

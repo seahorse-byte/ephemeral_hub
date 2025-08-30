@@ -1,5 +1,6 @@
+use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-use reqwest::multipart;
+use comfy_table::Table;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::env;
@@ -20,14 +21,9 @@ const EPHEMERAL_BANNER: &str = r#"
                     \O `::/       \::' O/
                      ""--'         `--""
 "#;
-
-fn get_api_base_url() -> String {
-    env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://api.ephemeral-hub.com".to_string())
-}
-
-/// A CLI for interacting with Ephemeral Hub.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -38,207 +34,188 @@ enum Commands {
     /// Create a new ephemeral hub.
     Create,
     /// Pipe text into a hub's text bin.
-    /// Example: cat log.txt | ephemeral pipe <URL>
     Pipe {
-        /// The full API URL of the hub (e.g., http://.../api/hubs/xyz)
+        /// The URL of the hub.
         url: String,
     },
     /// Upload a file to a hub.
     Upload {
-        /// The path to the file to upload.
+        /// Path to the file to upload.
         file_path: PathBuf,
-        /// The full API URL of the hub.
+        /// The URL of the hub.
         url: String,
     },
     /// Download all content from a hub as a zip file.
     Get {
-        /// The full API URL of the hub.
+        /// The URL of the hub.
         url: String,
     },
 }
 
-// This struct is used to deserialize the JSON response from the backend.
 #[derive(Deserialize, Debug)]
 struct CreateHubResponse {
     id: String,
-    url: String,
-    expires_at: String,
+    // We no longer need the URLs from the server, but we keep the struct
+    // the same to match the backend's JSON response.
+    url: String,      // not used within the CLI
+    text_url: String, // not used within the CLI
+    expires_at: DateTime<Utc>,
 }
 
-// Helper function to extract the hub ID from a URL.
-fn extract_id_from_url(url: &str) -> Option<String> {
-    // This logic is a bit naive and assumes the ID is the last part of the URL.
-    // A more robust solution would use regex or a URL parsing library.
-    url.split('/').last().map(|s| s.to_string())
+// Gets the API base URL from an environment variable, with a production default.
+fn get_api_base_url() -> String {
+    env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://api.ephemeral-hub.com".to_string())
+}
+
+// Extracts the hub ID from various possible URL formats.
+fn extract_hub_id(url: &str) -> Option<String> {
+    let parts: Vec<&str> = url.split('/').collect();
+    // Handles URLs like .../hubs/{id}, .../hubs/{id}/text, .../hubs/{id}/files, etc.
+    if let Some(hubs_index) = parts.iter().position(|&p| p == "hubs") {
+        if hubs_index + 1 < parts.len() {
+            return Some(parts[hubs_index + 1].to_string());
+        }
+    }
+    None
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     println!("{}", EPHEMERAL_BANNER);
     let cli = Cli::parse();
-
     let api_base_url = get_api_base_url();
+
+    // Configure a reqwest client that follows redirects.
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::default())
+        .build()
+        .unwrap();
 
     match cli.command {
         Commands::Create => {
             let mut sp = Spinner::new(Spinners::Dots9, "Creating a new hub...".into());
-
-            let client = reqwest::Client::new();
             let api_url = format!("{}/api/hubs", api_base_url);
 
             let response = client.post(&api_url).send().await;
 
-            sp.stop_with_message("✓ Hub created successfully!".into());
+            sp.stop();
 
             match response {
                 Ok(res) => {
                     if res.status().is_success() {
-                        let hub_info = res.json::<CreateHubResponse>().await?;
-                        println!("\n--- 🚀 New Ephemeral Hub ---");
-                        println!("ID:         {}", hub_info.id);
-                        println!("API URL:    {}", hub_info.url);
-                        println!("Expires at: {}", hub_info.expires_at);
-                        println!("-----------------------------");
+                        println!("\n✓ Hub created successfully!");
+                        match res.json::<CreateHubResponse>().await {
+                            Ok(hub) => {
+                                // Construct the URL on the client-side to ensure it's correct.
+                                let correct_api_url =
+                                    format!("{}/api/hubs/{}", api_base_url, hub.id);
+
+                                let mut table = Table::new();
+                                table.set_header(vec!["Attribute", "Value"]);
+                                table.add_row(vec!["Hub ID", &hub.id]);
+                                table.add_row(vec!["API URL", &correct_api_url]);
+                                table
+                                    .add_row(vec!["Expires At (UTC)", &hub.expires_at.to_string()]);
+                                println!("{table}");
+                            }
+                            Err(_) => {
+                                println!("Error: Failed to parse server response.");
+                            }
+                        }
                     } else {
-                        eprintln!("Error: Failed to create hub (Status: {})", res.status());
+                        println!("Error: Failed to create hub (Status: {})", res.status());
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error: Could not connect to the server: {}", e);
+                    println!("Error: Could not connect to the server: {}", e);
                 }
             }
         }
         Commands::Pipe { url } => {
-            let mut sp = Spinner::new(Spinners::Dots9, "Piping text to hub...".into());
+            if let Some(hub_id) = extract_hub_id(&url) {
+                let mut sp = Spinner::new(Spinners::Dots9, "Piping content...".into());
+                let api_url = format!("{}/api/hubs/{}/text", api_base_url, hub_id);
 
-            // Read all content from standard input.
-            let mut buffer = String::new();
-            io::stdin().read_to_string(&mut buffer)?;
+                let mut buffer = String::new();
+                io::stdin().read_to_string(&mut buffer).unwrap();
 
-            if buffer.trim().is_empty() {
-                sp.stop_with_message("✗ No text provided to pipe.".into());
-                return Ok(());
-            }
+                let response = client.put(&api_url).body(buffer).send().await;
+                sp.stop();
 
-            // Extract the ID from the provided URL.
-            let hub_id = match extract_id_from_url(&url) {
-                Some(id) => id,
-                None => {
-                    sp.stop_with_message("✗ Invalid hub URL provided.".into());
-                    return Ok(());
-                }
-            };
-
-            let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hubs/{}/text", api_base_url, hub_id);
-
-            let response = client.put(&api_url).body(buffer).send().await;
-
-            match response {
-                Ok(res) => {
-                    if res.status().is_success() {
-                        sp.stop_with_message("✓ Text piped successfully!".into());
-                    } else {
-                        sp.stop_with_message(
-                            format!("✗ Error: Failed to pipe text (Status: {})", res.status())
-                                .into(),
-                        );
+                match response {
+                    Ok(res) if res.status().is_success() => {
+                        println!("\n✓ Content piped successfully!");
+                    }
+                    Ok(res) => {
+                        println!("\nError: Failed to pipe content (Status: {})", res.status());
+                    }
+                    Err(e) => {
+                        println!("\nError: Could not connect to the server: {}", e);
                     }
                 }
-                Err(e) => {
-                    sp.stop_with_message(
-                        format!("✗ Error: Could not connect to the server: {}", e).into(),
-                    );
-                }
+            } else {
+                println!("Error: Invalid URL format provided.");
             }
         }
         Commands::Upload { file_path, url } => {
             if !file_path.exists() {
-                eprintln!("✗ Error: File not found at '{}'", file_path.display());
-                return Ok(());
+                println!("Error: File not found at '{}'", file_path.display());
+                return;
             }
 
-            let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
-            let mut sp = Spinner::new(
-                Spinners::Dots9,
-                format!("Uploading '{}'...", file_name).into(),
-            );
+            if let Some(hub_id) = extract_hub_id(&url) {
+                let mut sp = Spinner::new(Spinners::Dots9, "Uploading file...".into());
+                let api_url = format!("{}/api/hubs/{}/files", api_base_url, hub_id);
 
-            let hub_id = match extract_id_from_url(&url) {
-                Some(id) => id,
-                None => {
-                    sp.stop_with_message("✗ Invalid hub URL provided.".into());
-                    return Ok(());
-                }
-            };
+                let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+                let file_bytes = fs::read(&file_path).await.unwrap();
 
-            let file_bytes = fs::read(&file_path).await?;
-            let part = multipart::Part::bytes(file_bytes).file_name(file_name);
-            let form = multipart::Form::new().part("file", part);
+                let part = reqwest::multipart::Part::bytes(file_bytes).file_name(file_name);
+                let form = reqwest::multipart::Form::new().part("file", part);
 
-            let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hubs/{}/files", api_base_url, hub_id);
+                let response = client.post(&api_url).multipart(form).send().await;
+                sp.stop();
 
-            let response = client.post(&api_url).multipart(form).send().await;
-
-            match response {
-                Ok(res) => {
-                    if res.status().is_success() {
-                        sp.stop_with_message("✓ File uploaded successfully!".into());
-                    } else {
-                        sp.stop_with_message(
-                            format!("✗ Error: Failed to upload file (Status: {})", res.status())
-                                .into(),
-                        );
+                match response {
+                    Ok(res) if res.status().is_success() => {
+                        println!("\n✓ File uploaded successfully!");
+                    }
+                    Ok(res) => {
+                        println!("\nError: Failed to upload file (Status: {})", res.status());
+                    }
+                    Err(e) => {
+                        println!("\nError: Could not connect to the server: {}", e);
                     }
                 }
-                Err(e) => {
-                    sp.stop_with_message(
-                        format!("✗ Error: Could not connect to the server: {}", e).into(),
-                    );
-                }
+            } else {
+                println!("Error: Invalid URL format provided.");
             }
         }
         Commands::Get { url } => {
-            let mut sp = Spinner::new(Spinners::Dots9, "Downloading hub content...".into());
+            if let Some(hub_id) = extract_hub_id(&url) {
+                let mut sp = Spinner::new(Spinners::Dots9, "Downloading hub content...".into());
+                let api_url = format!("{}/api/hubs/{}/download", api_base_url, hub_id);
 
-            let hub_id = match extract_id_from_url(&url) {
-                Some(id) => id,
-                None => {
-                    sp.stop_with_message("✗ Invalid hub URL provided.".into());
-                    return Ok(());
-                }
-            };
+                let response = client.get(&api_url).send().await;
+                sp.stop();
 
-            let client = reqwest::Client::new();
-            let api_url = format!("{}/api/hubs/{}/download", api_base_url, hub_id);
-
-            let response = client.get(&api_url).send().await;
-
-            match response {
-                Ok(res) => {
-                    if res.status().is_success() {
-                        let file_bytes = res.bytes().await?;
+                match response {
+                    Ok(res) if res.status().is_success() => {
                         let file_name = format!("ephemeral_hub_{}.zip", hub_id);
-                        fs::write(&file_name, &file_bytes).await?;
-                        sp.stop_with_message(
-                            format!("✓ Hub content saved to '{}'!", file_name).into(),
-                        );
-                    } else {
-                        sp.stop_with_message(
-                            format!("✗ Error: Failed to download (Status: {})", res.status())
-                                .into(),
-                        );
+                        let bytes = res.bytes().await.unwrap();
+                        fs::write(&file_name, bytes).await.unwrap();
+                        println!("\n✓ Hub content downloaded to '{}'", file_name);
+                    }
+                    Ok(res) => {
+                        println!("\nError: Failed to download hub (Status: {})", res.status());
+                    }
+                    Err(e) => {
+                        println!("\nError: Could not connect to the server: {}", e);
                     }
                 }
-                Err(e) => {
-                    sp.stop_with_message(
-                        format!("✗ Error: Could not connect to the server: {}", e).into(),
-                    );
-                }
+            } else {
+                println!("Error: Invalid URL format provided.");
             }
         }
     }
-
-    Ok(())
 }

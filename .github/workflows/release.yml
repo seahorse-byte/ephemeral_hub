@@ -48,7 +48,7 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build CLI
-        # FIX: The --package flag must use the crate name from the Cargo.toml file.
+        # The --package flag must use the crate name from the Cargo.toml file.
         run: cargo build --release --package ephemeral_hub --target ${{ matrix.target }}
 
       - name: Package for Release
