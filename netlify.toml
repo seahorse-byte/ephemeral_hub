@@ -7,3 +7,13 @@ command = "cargo install dioxus-cli --force && dx build --release --platform web
 
 # as determined by the Dioxus CLI's default behavior.
 publish = "target/dx/ephemeral_web/release/web/public"
+
+# Single-Page Application (SPA) routing.
+# It tells Netlify how to handle deep links and page reloads.
+[[redirects]]
+# For any path that is requested...
+from = "/*"
+# ...serve the main index.html file instead.
+to = "/index.html"
+# Respond with a 200 OK status to keep the original URL in the browser's address bar.
+status = 200
