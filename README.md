@@ -8,6 +8,8 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/ed0b5f52-0792-4dc4-b33b-780bc3d1f1a1/deploy-status)](https://app.netlify.com/projects/ephemeral-hub/deploys)
 
+[![Latest Release](https://img.shields.io/github/v/release/seahorse-byte/ephemeral_hub)](https://github.com/seahorse-byte/ephemeral_hub/releases/latest)
+
 **Ephemeral Hub** is a temporary, no-login-required hub for text, files, and collaborative brainstorming. It provides a digital equivalent of a scrap piece of paper or a temporary whiteboard, where all content is automatically deleted after a set time.
 
 ## This project is a monorepo containing
