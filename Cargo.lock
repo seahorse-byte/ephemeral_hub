@@ -1747,7 +1747,7 @@ dependencies = [
 
 [[package]]
 name = "ephemeral_backend"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aws-config",
  "aws-sdk-s3",
@@ -1772,7 +1772,7 @@ dependencies = [
 
 [[package]]
 name = "ephemeral_hub"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -1786,7 +1786,7 @@ dependencies = [
 
 [[package]]
 name = "ephemeral_web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dioxus",
  "dioxus-router",
