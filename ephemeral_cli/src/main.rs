@@ -55,13 +55,12 @@ enum Commands {
 #[derive(Deserialize, Debug)]
 struct CreateHubResponse {
     id: String,
-    // We no longer need the URLs from the server, but we keep the struct
-    // the same to match the backend's JSON response.
-    url: String,      // not used within the CLI
-    text_url: String, // not used within the CLI
+    #[serde(rename = "url")]
+    _url: String,
+    #[serde(rename = "text_url")]
+    _text_url: String,
     expires_at: DateTime<Utc>,
 }
-
 // Gets the API base URL from an environment variable, with a production default.
 fn get_api_base_url() -> String {
     env::var("EPHEMERAL_API_URL").unwrap_or_else(|_| "https://api.ephemeral-hub.com".to_string())
