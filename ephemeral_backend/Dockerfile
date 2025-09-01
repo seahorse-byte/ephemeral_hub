@@ -1,35 +1,41 @@
 # ---- Builder Stage ----
-# Use the official Rust image as a build environment.
+# Use the latest stable Rust image as the build environment.
 FROM rust:latest AS builder
 
-# Set a working directory for the entire application.
+# Set the working directory inside the container.
 WORKDIR /usr/src/app
 
-# Install build dependencies that are commonly needed.
-RUN apt-get update && apt-get install -y libssl-dev pkg-config
-
-# Copy the entire workspace context into the container.
-# This is the simplest way to handle workspace builds.
+# Copy the entire project (the workspace) into the container.
 COPY . .
 
 # Build only the specific `ephemeral_backend` package in release mode.
+# This is a simpler and more robust build step.
 RUN cargo build --release --package ephemeral_backend
 
 # ---- Runner Stage ----
-# Use a minimal base image for the final container.
+# Use a slim, modern Debian image for the final, small container.
 FROM debian:trixie-slim AS runner
 
-# Install runtime dependencies.
-RUN apt-get update && apt-get install -y libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install necessary certificates for making HTTPS requests.
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /usr/local/bin
+# Create a non-root user for better security.
+RUN useradd -ms /bin/bash appuser
 
-# Copy the compiled binary from the correct path in the builder stage.
+# Set the working directory for the runner.
+WORKDIR /home/appuser/
+
+# Copy the compiled binary from the builder stage.
 COPY --from=builder /usr/src/app/target/release/ephemeral_backend .
 
-# Expose the port the server will run on.
+# Change the ownership of the application files to the new user.
+RUN chown -R appuser:appuser .
+
+# Switch to the non-root user.
+USER appuser
+
+# Expose the port the application will run on.
 EXPOSE 3000
 
-# Set the command to run the application.
+# The command to run when the container starts.
 CMD ["./ephemeral_backend"]
-
