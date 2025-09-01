@@ -1,5 +1,3 @@
-# docker-compose.yml
-
 services:
   # Our Rust backend service
   backend:
