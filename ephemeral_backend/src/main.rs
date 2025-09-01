@@ -1,5 +1,7 @@
+// AWS SDK crates
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::{Client, config::Region};
+use aws_sdk_s3::{Client as S3Client, config::Region};
+
 use axum::{
     Router,
     routing::{get, post, put},
@@ -34,33 +36,21 @@ async fn main() {
         .init();
 
     // --- S3 Client Setup ---
+    let aws_region_str = env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
     let s3_endpoint_url =
-        env::var("S3_ENDPOINT_URL").unwrap_or_else(|_| "http://127.0.0.1:9000".to_string());
-    let s3_region = Region::new("us-east-1");
-    let region_provider = RegionProviderChain::first_try(s3_region.clone());
-    // Build the shared AWS config first.
-    let shared_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        env::var("S3_ENDPOINT_URL").unwrap_or_else(|_| "http://localhost:9000".to_string());
+
+    let region_provider = RegionProviderChain::first_try(Region::new(aws_region_str));
+
+    let s3_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .region(region_provider)
         .endpoint_url(&s3_endpoint_url)
         .load()
         .await;
 
-    // Construct an S3-specific config that forces path-style addressing.
-    // This prevents the SDK from using virtual-host style ("{bucket}.{endpoint}")
-    // which would try to resolve DNS names like "ephemeral.minio" and fail inside
-    // container networks. MinIO running at service name `minio` requires path-style.
-    let s3_conf = aws_sdk_s3::config::Builder::from(&shared_config)
-        .force_path_style(true)
-        .build();
-
-    // Create the S3 client from the S3-specific config.
-    let s3_client = Client::from_conf(s3_conf);
+    let s3_client = S3Client::new(&s3_config);
     info!("Connected to S3-compatible storage.");
 
-    // Ensure the bucket used by the application exists. This is best-effort:
-    // if the bucket already exists or cannot be created for some reason,
-    // we log the result and continue. This avoids "NoSuchBucket" errors
-    // during first-time uploads to a freshly started MinIO instance.
     let bucket_name = "ephemeral";
     match s3_client.create_bucket().bucket(bucket_name).send().await {
         Ok(_) => info!("Ensured S3 bucket '{}' exists.", bucket_name),
