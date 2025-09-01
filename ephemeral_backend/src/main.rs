@@ -21,7 +21,7 @@ mod websocket;
 #[derive(Clone)]
 pub struct AppState {
     pub redis: deadpool_redis::Pool,
-    pub s3: Client,
+    pub s3: S3Client,
     pub ws_state: Arc<AppWsState>,
 }
 
@@ -51,10 +51,13 @@ async fn main() {
     let s3_client = S3Client::new(&s3_config);
     info!("Connected to S3-compatible storage.");
 
-    let bucket_name = "ephemeral";
-    match s3_client.create_bucket().bucket(bucket_name).send().await {
-        Ok(_) => info!("Ensured S3 bucket '{}' exists.", bucket_name),
-        Err(e) => tracing::warn!("Could not create bucket '{}': {:?}", bucket_name, e),
+    // Ensure the 'ephemeral' bucket exists
+    if let Err(e) = handlers::ensure_bucket_exists(&s3_client, "ephemeral").await {
+        tracing::error!("Could not create bucket 'ephemeral': {:?}", e);
+        // Depending on the desired behavior, you might want to panic here
+        // std::process::exit(1);
+    } else {
+        info!("Ensured S3 bucket 'ephemeral' exists.");
     }
 
     // --- SETUP REDIS POOL (same as before) ---
