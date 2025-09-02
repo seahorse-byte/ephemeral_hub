@@ -279,7 +279,7 @@ pub async fn upload_file(
         // Stream the file content to the S3 bucket.
         let body = ByteStream::from(data);
 
-        let bucket = env::var("AWS_S3_BUCKET").expect("AWS_S3_BUCKET must be set");
+        let bucket = env::var("S3_BUCKET_NAME").expect("S3_BUCKET_NAME must be set");
         state
             .s3
             .put_object()
@@ -336,7 +336,7 @@ pub async fn download_files(
     // Fetch each file from S3 and add it to the zip.
     for file_info in hub.files {
         let s3_key = format!("{}/{}", id, file_info.filename);
-        let bucket = env::var("AWS_S3_BUCKET").expect("AWS_S3_BUCKET must be set");
+        let bucket = env::var("S3_BUCKET_NAME").expect("S3_BUCKET_NAME must be set");
         let object = state
             .s3
             .get_object()
