@@ -39,6 +39,8 @@ async fn main() {
     let s3_endpoint_url =
         env::var("S3_ENDPOINT_URL").unwrap_or_else(|_| "http://localhost:9000".to_string());
 
+    let s3_bucket_name = env::var("S3_BUCKET_NAME").unwrap_or_else(|_| "ephemeral".to_string());
+
     let region_provider = RegionProviderChain::first_try(Region::new(aws_region_str));
 
     let s3_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
@@ -51,12 +53,14 @@ async fn main() {
     info!("Connected to S3-compatible storage.");
 
     // Ensure the 'ephemeral' bucket exists
-    if let Err(e) = handlers::ensure_bucket_exists(&s3_client, "ephemeral").await {
-        tracing::error!("Could not create bucket 'ephemeral': {:?}", e);
-        // Depending on the desired behavior, we might want to panic here
-        // std::process::exit(1);
+    if let Err(e) = handlers::ensure_bucket_exists(&s3_client, &s3_bucket_name).await {
+        tracing::error!(
+            "Could not create or verify bucket '{}': {:?}",
+            s3_bucket_name,
+            e
+        );
     } else {
-        info!("Ensured S3 bucket 'ephemeral' exists.");
+        info!("Ensured S3 bucket '{}' exists.", s3_bucket_name);
     }
 
     // --- SETUP REDIS POOL---
