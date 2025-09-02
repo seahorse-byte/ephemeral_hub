@@ -7,6 +7,8 @@ services:
     image: ephemeral-backend
     restart: unless-stopped
     network_mode: "host" 
+    env_file:
+      - .env
     environment:
       - RUST_LOG=info
       - REDIS_URL=${REDIS_URL}
@@ -14,6 +16,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_S3_ADDRESSING_STYLE=virtual
     depends_on:
       - redis
       - minio

@@ -277,10 +277,14 @@ pub async fn upload_file(
 
         // Stream the file content to the S3 bucket.
         let body = ByteStream::from(data);
+
+        use std::env;
+
+        let bucket = env::var("AWS_S3_BUCKET").expect("AWS_S3_BUCKET must be set");
         state
             .s3
             .put_object()
-            .bucket("ephemeral")
+            .bucket(&bucket)
             .key(&s3_key)
             .body(body)
             .send()
