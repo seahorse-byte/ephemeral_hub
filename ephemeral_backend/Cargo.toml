@@ -4,22 +4,25 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-aws-config = "1.8.5"
-aws-sdk-s3 = "1.102.0"
 axum = { version = "0.8.4", features = ["ws"] }
 axum-extra = { version = "0.10.1", features = ["multipart"] }
-bytes = "1.10.1"
 chrono = { version = "0.4.41", features = ["serde"] }
-dashmap = "6.1.0"
-deadpool-redis = "0.22.0"
-futures-util = "0.3.31"
-http-body-util = { version = "0.1.3", features = ["full"] }
+deadpool-redis = { version = "0.22.0", features = ["rt_tokio_1", "rustls"] }
+futures-util = "0.3.30"
 nanoid = "0.4.0"
-redis = { version = "0.32.5", features = ["tls-rustls", "tokio-comp"] }
+
+redis = { version = "0.32.5", features = ["tokio-comp"] }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
+serde_json = "1.0.128"
 tokio = { version = "1.47.1", features = ["full"] }
-tower-http = { version = "0.6.6", features = ["cors"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tower-http = { version = "0.5.2", features = ["cors"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 zip = { version = "4.3.0", features = ["bzip2"] }
+
+
+# AWS SDK crates
+aws-config = "1.8.5"
+aws-sdk-s3 = "1.102.0"
+bytes = "1.10.1"
+http-body-util = { version = "0.1.3", features = ["full"] }
