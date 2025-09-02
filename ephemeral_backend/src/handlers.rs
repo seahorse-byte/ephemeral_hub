@@ -1,11 +1,9 @@
 use crate::{AppState, shared_types::PathData};
 use aws_sdk_s3::{
-    Client as S3Client,
-    error::SdkError,
-    operation::create_bucket::CreateBucketError,
+    Client as S3Client, error::SdkError, operation::head_bucket::HeadBucketError,
     primitives::ByteStream,
-    types::{BucketLocationConstraint, CreateBucketConfiguration},
 };
+
 use axum::{
     Json,
     body::Body,
@@ -367,46 +365,10 @@ pub async fn download_files(
     Ok(response)
 }
 
-// Add this new function to the bottom of handlers.rs
-pub async fn ensure_bucket_exists(
+pub async fn verify_bucket_access(
     s3_client: &S3Client,
     bucket_name: &str,
-) -> Result<(), SdkError<CreateBucketError>> {
-    // Get the region from the S3 client's configuration
-    let region_str = s3_client
-        .config()
-        .region()
-        .map(|r| r.as_ref())
-        .unwrap_or("us-east-1");
-
-    // Don't set a location constraint for the classic us-east-1 region
-    let bucket_config = if region_str != "us-east-1" {
-        CreateBucketConfiguration::builder()
-            .location_constraint(BucketLocationConstraint::from(region_str))
-            .build()
-    } else {
-        // An empty configuration is needed for us-east-1
-        CreateBucketConfiguration::builder().build()
-    };
-
-    match s3_client
-        .create_bucket()
-        .bucket(bucket_name)
-        .create_bucket_configuration(bucket_config)
-        .send()
-        .await
-    {
-        Ok(_) => {
-            // Bucket was created successfully.
-            Ok(())
-        }
-        Err(SdkError::ServiceError(err)) if err.err().is_bucket_already_owned_by_you() => {
-            // This error is okay. It means the bucket already exists and we own it.
-            Ok(())
-        }
-        Err(e) => {
-            // Any other error is a problem.
-            Err(e)
-        }
-    }
+) -> Result<(), SdkError<HeadBucketError>> {
+    s3_client.head_bucket().bucket(bucket_name).send().await?;
+    Ok(())
 }
