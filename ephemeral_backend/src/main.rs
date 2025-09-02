@@ -34,24 +34,20 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // --- S3 Client Setup ---
-    let aws_region_str = env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
-    let s3_endpoint_url =
-        env::var("S3_ENDPOINT_URL").unwrap_or_else(|_| "http://localhost:9000".to_string());
-
+    // S3 Configuration
+    let aws_region_str = env::var("AWS_REGION").expect("AWS_REGION must be set");
     let s3_bucket_name =
         env::var("S3_BUCKET_NAME").expect("S3_BUCKET_NAME must be set in the environment");
-
     let region_provider = RegionProviderChain::first_try(Region::new(aws_region_str));
 
+    // --- AWS S3 ---
     let s3_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .region(region_provider)
-        .endpoint_url(&s3_endpoint_url)
         .load()
         .await;
 
     let s3_client = S3Client::new(&s3_config);
-    info!("Connected to S3-compatible storage.");
+    info!("S3 client configured.");
 
     // Verify the application can access the configured bucket.
     if let Err(e) = handlers::verify_bucket_access(&s3_client, &s3_bucket_name).await {
