@@ -16,10 +16,11 @@ use chrono::{DateTime, Duration, Utc};
 use nanoid::nanoid;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::io::{self, Cursor, Write};
 use tracing::debug;
 use zip::write::{FileOptions, ZipWriter};
-// The AppError enum, updated to handle all necessary error types.
+
 #[derive(Debug)]
 pub enum AppError {
     PoolError(deadpool_redis::PoolError),
@@ -278,8 +279,6 @@ pub async fn upload_file(
         // Stream the file content to the S3 bucket.
         let body = ByteStream::from(data);
 
-        use std::env;
-
         let bucket = env::var("AWS_S3_BUCKET").expect("AWS_S3_BUCKET must be set");
         state
             .s3
@@ -337,10 +336,11 @@ pub async fn download_files(
     // Fetch each file from S3 and add it to the zip.
     for file_info in hub.files {
         let s3_key = format!("{}/{}", id, file_info.filename);
+        let bucket = env::var("AWS_S3_BUCKET").expect("AWS_S3_BUCKET must be set");
         let object = state
             .s3
             .get_object()
-            .bucket("ephemeral")
+            .bucket(&bucket)
             .key(&s3_key)
             .send()
             .await?;
