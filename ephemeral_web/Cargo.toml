@@ -7,7 +7,12 @@ edition = "2021"
 dioxus = { version = "0.6.3", features = ["web", "document"] }
 dioxus-web = "0.6.3"
 dioxus-router = "0.6.3"
-reqwest = { version = "0.12.23", features = ["json", "multipart"] }
+# reqwest = { version = "0.12.23", features = ["json", "multipart"] }
+reqwest = { version = "0.12.23", default-features = false, features = [
+    "json",
+    "multipart",
+] }
+
 serde = { version = "1.0.203", features = ["derive"] }
 
 

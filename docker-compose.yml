@@ -6,9 +6,16 @@ services:
       dockerfile: ephemeral_backend/Dockerfile
     image: ephemeral-backend
     restart: unless-stopped
+<<<<<<< Updated upstream
     network_mode: "host" 
     env_file:
       - .env
+=======
+    # network_mode: "host"
+    ports:
+      - "3000:3000"
+
+>>>>>>> Stashed changes
     environment:
       - RUST_LOG=info
       - REDIS_URL=${REDIS_URL}

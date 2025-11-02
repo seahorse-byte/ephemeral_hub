@@ -83,7 +83,13 @@ fn Home() -> Element {
         async move {
             // Wait for a message from the `onclick` handler.
             while rx.next().await.is_some() {
+<<<<<<< Updated upstream
                 let api_url = "https://api.ephemeral-hub.com/api/hubs";
+=======
+                // let api_url = "https://api.ephemeral-hub.com/api/hubs";
+                // let api_url = "/api/hubs";
+                let api_url = "http://localhost:3000/api/hubs";
+>>>>>>> Stashed changes
 
                 #[derive(Deserialize, Debug)]
                 struct CreateHubResponse {
@@ -411,18 +417,27 @@ struct FileInfo {
 
 #[allow(non_snake_case)]
 pub fn Hub(props: HubProps) -> Element {
-    let id = props.id.clone();
+    let hub_id = props.id.clone();
+    let mut text_content = use_signal(String::new);
 
     let hub_resource = use_resource(move || {
-        let id = id.clone();
+        let hub_id = hub_id.clone();
         async move {
-            let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}", id);
+            let api_url = format!("http://localhost:3000/api/hubs/{}", hub_id);
+            // let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}", hub_id);
             reqwest::get(&api_url)
                 .await
                 .ok()?
                 .json::<HubData>()
                 .await
                 .ok()
+        }
+    });
+
+    // Effect to update the text_content signal when the resource loads
+    use_effect(move || {
+        if let Some(Ok(Some(data))) = hub_resource.read().as_ref() {
+            text_content.set(data.content.clone());
         }
     });
 
@@ -545,6 +560,15 @@ pub fn Hub(props: HubProps) -> Element {
         }
     };
 
+    // Background geometric patterns
+    let geometric_patterns = rsx! {
+        div { class: "absolute inset-0 opacity-5 pointer-events-none",
+                div { class: "absolute top-1/4 left-1/4 w-64 h-64 border border-blue-400/20 rounded-full" }
+                div { class: "absolute top-3/4 right-1/4 w-48 h-48 border border-cyan-400/15 rounded-lg rotate-45" }
+                div { class: "absolute bottom-1/4 left-1/2 w-32 h-32 border border-orange-400/10 rounded-full" }
+        }
+    };
+
     rsx! {
         div {
             class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden",
@@ -587,10 +611,13 @@ pub fn Hub(props: HubProps) -> Element {
                 }
                 div { class: "w-full max-w-4xl",
                     if let Some(inner) = &*resource_state {
-                        match inner {
+                        match *inner {
                             Some(data) => rsx! {
                                 div { class: "grid gap-8 md:grid-cols-1 lg:grid-cols-2",
-                                    TextBin { data: data.clone(), hub_id: props.id.clone() }
+                                    TextBin {
+                                        hub_id: props.id.clone(),
+                                        text_content: text_content,
+                                    }
                                     FileDrop {
                                         hub_id: props.id.clone(),
                                         files: data.files.clone(),
@@ -649,35 +676,29 @@ pub fn Hub(props: HubProps) -> Element {
                 }
             }
 
-            // Background geometric patterns
-            div { class: "absolute inset-0 opacity-5 pointer-events-none",
-                div { class: "absolute top-1/4 left-1/4 w-64 h-64 border border-blue-400/20 rounded-full" }
-                div { class: "absolute top-3/4 right-1/4 w-48 h-48 border border-cyan-400/15 rounded-lg rotate-45" }
-                div { class: "absolute bottom-1/4 left-1/2 w-32 h-32 border border-orange-400/10 rounded-full" }
-            }
+            {geometric_patterns}
         }
     }
 }
 
-/// A sub-component specifically for the Text Bin UI.
 #[derive(PartialEq, Props, Clone)]
 struct TextBinProps {
-    data: HubData,
     hub_id: String,
+    text_content: Signal<String>,
 }
 
 #[allow(non_snake_case)]
 fn TextBin(props: TextBinProps) -> Element {
-    let mut text_content = use_signal(|| props.data.content.clone());
+    // This component no longer owns the state, it just uses the signal from its props.
     let mut save_button_state = use_signal(|| "Save".to_string());
-
     let hub_id = props.hub_id.clone();
+    let mut text_content = props.text_content;
 
     let save_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<String>| {
         let hub_id = hub_id.clone();
         async move {
             while let Some(content) = rx.next().await {
-                let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}/text", hub_id);
+                let api_url = format!("/api/hubs/{}/text", hub_id);
                 let client = reqwest::Client::new();
                 let res = client.put(api_url).body(content).send().await;
 
@@ -689,44 +710,25 @@ fn TextBin(props: TextBinProps) -> Element {
     });
 
     rsx! {
-        div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/30 transition-all duration-300",
-            div { class: "flex items-center gap-3 mb-4",
-                div { class: "w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center",
-                   svg {
-                        class: "w-6 h-6 text-orange-400",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        path {
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            stroke_width: "2",
-                            d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        }
-                    }
-                }
-                h2 { class: "text-xl font-semibold text-white", "Text Content" }
-            }
+        textarea {
+            class: "w-full min-h-[200px] bg-slate-900/50 border border-slate-600/50 rounded-lg p-4 text-slate-100 placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-300 font-mono text-sm resize-none",
+            placeholder: "Enter your text content here...",
+            value: "{text_content}",
+            oninput: move |event| text_content.set(event.value()),
+        }
 
-            textarea {
-                class: "w-full min-h-[200px] bg-slate-900/50 border border-slate-600/50 rounded-lg p-4 text-slate-100 placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-300 font-mono text-sm resize-none",
-                placeholder: "Enter your text content here...",
-                value: "{text_content}",
-                oninput: move |event| text_content.set(event.value()),
-            }
 
-            button {
-                class: "inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-150",
-                onclick: move |_| {
-                    save_coroutine.send(text_content.read().clone());
-                    save_button_state.set("Saving...".to_string());
+        button {
+            onclick: move |_| {
+                save_coroutine.send(text_content.read().clone());
+                save_button_state.set("Saving...".to_string());
 
-                    let mut save_button_state = save_button_state.clone();
-                    spawn(async move {
-                        sleep(Duration::from_secs(2)).await;
-                        save_button_state.set("Save".to_string());
-                    });
-                },
+                let mut save_button_state = save_button_state.clone();
+                spawn(async move {
+                    sleep(Duration::from_secs(2)).await;
+                    save_button_state.set("Save".to_string());
+                });
+            },
                 if save_button_state.read().as_str() == "Saving..." {
                     div { class: "animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" }
                 } else {
@@ -743,13 +745,95 @@ fn TextBin(props: TextBinProps) -> Element {
                         }
                     }
                 },
-
-
                 "{save_button_state}"
-            }
         }
     }
 }
+
+// #[allow(non_snake_case)]
+// fn TextBin(props: TextBinProps) -> Element {
+//     let mut text_content = use_signal(|| props.data.content.clone());
+//     let mut save_button_state = use_signal(|| "Save".to_string());
+
+//     let hub_id = props.hub_id.clone();
+
+//     let save_coroutine = use_coroutine(move |mut rx: UnboundedReceiver<String>| {
+//         let hub_id = hub_id.clone();
+//         async move {
+//             while let Some(content) = rx.next().await {
+//                 // let api_url = format!("https://api.ephemeral-hub.com/api/hubs/{}/text", hub_id);
+//                 let api_url = format!("http://localhost:3000/hubs/{}/text", hub_id);
+//                 let client = reqwest::Client::new();
+//                 let res = client.put(api_url).body(content).send().await;
+
+//                 if res.is_err() {
+//                     log::error!("Failed to save content");
+//                 }
+//             }
+//         }
+//     });
+
+//     rsx! {
+//         div { class: "bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/30 transition-all duration-300",
+//             div { class: "flex items-center gap-3 mb-4",
+//                 div { class: "w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center",
+//                    svg {
+//                         class: "w-6 h-6 text-orange-400",
+//                         fill: "none",
+//                         stroke: "currentColor",
+//                         view_box: "0 0 24 24",
+//                         path {
+//                             stroke_linecap: "round",
+//                             stroke_linejoin: "round",
+//                             stroke_width: "2",
+//                             d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+//                         }
+//                     }
+//                 }
+//                 h2 { class: "text-xl font-semibold text-white", "Text Content" }
+//             }
+
+//             textarea {
+//                 class: "w-full min-h-[200px] bg-slate-900/50 border border-slate-600/50 rounded-lg p-4 text-slate-100 placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-300 font-mono text-sm resize-none",
+//                 placeholder: "Enter your text content here...",
+//                 value: "{text_content}",
+//                 oninput: move |event| text_content.set(event.value()),
+//             }
+
+//             button {
+//                 class: "inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-150",
+//                 onclick: move |_| {
+//                     save_coroutine.send(text_content.read().clone());
+//                     save_button_state.set("Saving...".to_string());
+
+//                     let mut save_button_state = save_button_state.clone();
+//                     spawn(async move {
+//                         sleep(Duration::from_secs(2)).await;
+//                         save_button_state.set("Save".to_string());
+//                     });
+//                 },
+//                 if save_button_state.read().as_str() == "Saving..." {
+//                     div { class: "animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" }
+//                 } else {
+//                     svg {
+//                         class: "w-4 h-4",
+//                         fill: "none",
+//                         stroke: "currentColor",
+//                         view_box: "0 0 24 24",
+//                         path {
+//                             stroke_linecap: "round",
+//                             stroke_linejoin: "round",
+//                             stroke_width: "2",
+//                             d: "M5 13l4 4L19 7"
+//                         }
+//                     }
+//                 },
+
+//                 "{save_button_state}"
+//             }
+//         }
+//     }
+// }
 
 /// A sub-component for the File Drop UI.
 #[derive(PartialEq, Props, Clone)]
@@ -890,6 +974,7 @@ struct PathData {
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 enum WsMessage {
     PathCompleted(PathData),
+    TextUpdated(String),
 }
 
 #[derive(PartialEq, Props, Clone)]
@@ -937,7 +1022,6 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
 
             let (mut write, mut read) = ws.split();
 
-            // Incoming messages
             spawn({
                 let mut paths = paths.clone();
                 async move {
@@ -947,6 +1031,7 @@ fn Whiteboard(props: WhiteboardProps) -> Element {
                                 WsMessage::PathCompleted(new_path) => {
                                     paths.write().push(new_path);
                                 }
+                                WsMessage::TextUpdated(_) => todo!(),
                             }
                         }
                     }
